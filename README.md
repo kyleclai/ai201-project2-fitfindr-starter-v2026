@@ -114,26 +114,53 @@ FitFindr is a thrifting agent. You type what you want in plain language ("a vint
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30'
 
+  Found:    Graphic Tee — 2003 Tour Bootleg Style — $24.0 on depop
+
+  Outfit:   **Outfit 1: Effortless Grunge**
+Pair the graphic tee with your Baggy straight-leg jeans and Black combat boots. Cinc the jeans with the Brown leather belt, and layer the Vintage black denim jacket on top. Finish the look with the Black crossbody bag for an easy, everyday streetwear vibe.
+
+**Outfit 2: Streetwear Contrast**
+Tuck the graphic tee into your Wide-leg khaki trousers, accented by the Brown leather belt. Throw the Black cropped zip hoodie over your shoulders or wear it unzipped, and step into the Chunky white sneakers. Grab the Black crossbody bag to complete this relaxed, edgy combination.
+
+  Fit card: Finally found the ultimate 2003 tour bootleg tee on Depop and I am obsessed. It was only $24, and the black-on-black graphic gives off such a effortless, beat-up grunge vibe. Can’t wait to style this with baggy denim and beat-up combat boots for an easy everyday fit.
+```
+
+**Empty search (the branch)**
+
+```
+$ python app.py ask 'designer ballgown size XXS under $5'
+
+  Nothing matched 'designer ballgown', size XXS, under $5. Try to drop the size or try a nearby one; raise the price ceiling; use fewer or more general keywords (e.g. 'tee' instead of a brand name).
+
+0 model calls this session
 ```
 
 **The three tools, tested one at a time**
 
 ```
-$ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
+$ python -c "from tools import search_listings; print([(x['title'],x['price']) for x in search_listings('graphic tee', max_price=30)][:3])"
+[('Graphic Tee — 2003 Tour Bootleg Style', 24.0), ('Y2K Baby Tee — Butterfly Print', 18.0), ('Vintage Band Tee — Faded Grey', 19.0)]
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
+$ python -c "from tools import suggest_outfit, search_listings; from utils.data_loader import get_empty_wardrobe; print(suggest_outfit(search_listings('graphic tee',max_price=30)[0], get_empty_wardrobe()))"
+Channel the Y2K grunge vibe with two easy looks:
 
+**Look 1 (Casual Edge):** Pair the tee with baggy, light-wash denim or distressed cargo pants. Add a well-worn leather belt and chunky skate sneakers (like vintage Vans or chunky trainers) for an effortless streetwear aesthetic.
+
+**Look 2 (Layered Streetwear):** Wear it layered over a long-sleeve black mesh top or striped tee. Combine with a pleated plaid mini skirt or relaxed black trousers, and finish the outfit with platform boots and a silver chain necklace to lean into the authentic concert-bootleg look.
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
-
+$ AI201_CACHE=0 python -c "from tools import create_fit_card, search_listings; item=search_listings('graphic tee',max_price=30)[0]; [print(i+1, create_fit_card('Pair with baggy dark-wash jeans and white sneakers.', item)) for i in range(3)]"
+1 Stoked to finally score this 2003 tour bootleg tee after hunting for the ultimate grunge streetwear vibe. I managed to snag it on Depop for just $24, and the black fade is already *so* perfectly broken in. Can't wait to style it with some baggy dark-wash denim and crisp white sneakers.
+2 Found this absolute gem on Depop and I'm honestly obsessed. For just $24, this 2003 tour bootleg tee brings the ultimate grunge streetwear vibe. Can’t wait to style it with some baggy dark-wash jeans and beat-up white sneakers.
+3 Scored this 2003 tour bootleg tee on Depop for just $24 and I'm honestly obsessed. The faded black grunge vibe is unmatched, especially with baggy dark-wash jeans and fresh white sneakers. Streetwear gold for real.
 ```
+
+Note: with the cache on (the default), the same three calls returned one identical caption three times; `AI201_CACHE=0` gives three different ones. Temperature is already 0.9, so the cache was the cause.
 
 ---
 

@@ -45,7 +45,7 @@ Fields: `id, title, description, category, style_tags, size, condition, price, c
 - [ ] Push; submit fork URL
 
 ## Still open (needs your API key)
-- [ ] Add key to `.env`, then run the three per-tool terminal tests and one full `ask` with the real model; paste the output into README **Sample Run** (search test and the empty-search run are already real output; model outputs aren't pasted yet)
+- [x] (done) Add key to `.env`, then run the three per-tool terminal tests and one full `ask` with the real model; paste the output into README **Sample Run** (search test and the empty-search run are already real output; model outputs aren't pasted yet)
 - [ ] Write **How I Used AI** (two real moments — see README)
 - [ ] Read criteria.md 3-5 and make sure you'd defend them (the unit says criteria should be yours)
 
