@@ -39,7 +39,7 @@ This path never touches the model or the network. It's a filter that returns `[]
 
 ---
 
-## 3. The Item Search Found Is the Same One the Next Tools Get
+## 3. Item search found is same one the next tools get
 
 For 5 different queries that each match something, the `id` in `session["selected_item"]` is the same `id` that `suggest_outfit` got, the same one `create_fit_card` got, and the same as `session["search_results"][0]` — 5 of 5 queries. I check it by wrapping both tools so they record what they were called with.
 
@@ -48,7 +48,7 @@ I'm counting exact id matches instead of reading the output, because a state bug
 
 ---
 
-## 4. The Fit Card Reads Like a Real Post Even Though the Words Change
+## 4. Fit card reads like a real post even though words change
 
 For 5 different items, each fit card is 2–4 sentences, has the price as a dollar amount, and names the platform. At least 4 of the 5 cards pass all three checks, and no two of the 5 cards start with the same first five words.
 
@@ -57,7 +57,7 @@ The words are different every run (temperature is 0.9), so I'm not testing the w
 
 ---
 
-## 5. Search Never Shows Items Over My Price or in the Wrong Size
+## 5. Search never shows items over my price or in the wrong size
 
 Across 5 queries that each have a price ceiling and a size, every listing `search_listings` returns is at or under the ceiling and has the size I asked for as one of its size tokens. Zero violations, in 5 of 5 queries.
 

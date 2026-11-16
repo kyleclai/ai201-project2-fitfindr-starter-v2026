@@ -17,8 +17,9 @@ import re
 
 import config
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card
-from generate import ModelUnavailable
+from tools import suggest_outfit, create_fit_card
+from generate import ModelUnavailable, QuotaGuard
+from mcp_client import call_tool, MCPError
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -111,34 +112,70 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     # Regex parse: price ceiling, size, and whatever is left is the description.
     session["parsed"] = parse_query(query)
+    trace.step("parse_query (regex)", inputs=repr(query), returned=str(session["parsed"]))
 
     # A straight-line loop with a stop condition. Each pass picks the next step
     # from what the session holds, so the empty-search branch simply never
     # reaches the later steps.
     count = 0
-    while session["fit_card"] is None and session["error"] is None:
-        count += 1
-        trace.check_iterations(count)
+    try:
+        while session["fit_card"] is None and session["error"] is None:
+            count += 1
+            trace.check_iterations(count)
 
-        if not session["search_results"]:
-            p = session["parsed"]
-            session["search_results"] = search_listings(
-                p["description"], size=p["size"], max_price=p["max_price"]
-            )
             if not session["search_results"]:
-                session["error"] = _no_results_message(p)       # THE BRANCH
+                p = session["parsed"]
+                args = {"description": p["description"], "size": p["size"],
+                        "max_price": p["max_price"]}
+                # Moved onto MCP in unit 4: same arguments, same return value.
+                session["search_results"] = call_tool("search_listings", args)
+                trace.step("search_listings (via MCP)", inputs=str(args),
+                           returned=session["search_results"])
+                if not session["search_results"]:
+                    session["error"] = _no_results_message(p)       # THE BRANCH
+                    trace.step("branch: search came back empty", note="stopping, "
+                               "suggest_outfit and create_fit_card are not called")
+                else:
+                    session["selected_item"] = session["search_results"][0]
+
+            elif session["outfit_suggestion"] is None:
+                session["outfit_suggestion"] = suggest_outfit(
+                    session["selected_item"], session["wardrobe"]
+                )
+                trace.step("suggest_outfit",
+                           inputs=f"new_item={session['selected_item']['id']} ({session['selected_item']['title']}), "
+                                  f"wardrobe_items={len(session['wardrobe'].get('items', []))}",
+                           returned=session["outfit_suggestion"])
+
             else:
-                session["selected_item"] = session["search_results"][0]
-
-        elif session["outfit_suggestion"] is None:
-            session["outfit_suggestion"] = suggest_outfit(
-                session["selected_item"], session["wardrobe"]
-            )
-
-        else:
-            session["fit_card"] = create_fit_card(
-                session["outfit_suggestion"], session["selected_item"]
-            )
+                session["fit_card"] = create_fit_card(
+                    session["outfit_suggestion"], session["selected_item"]
+                )
+                trace.step("create_fit_card",
+                           inputs=f"new_item={session['selected_item']['id']} ({session['selected_item']['title']}), "
+                                  f"outfit={len(session['outfit_suggestion'])} chars",
+                           returned=session["fit_card"])
+    except ModelUnavailable:
+        session["error"] = (
+            "The model couldn't be reached, so I couldn't write the outfit or the "
+            "fit card. Check that GEMINI_API_KEY in your .env is correct and that "
+            "you're online, then run the same query again."
+        )
+        trace.step("model unavailable", note=session["error"])
+    except QuotaGuard:
+        session["error"] = (
+            "This session hit its request budget, so I stopped before using up "
+            "your allowance. Wait a minute and try again, or raise "
+            "SESSION_REQUEST_BUDGET in config.py if you meant to run this many."
+        )
+        trace.step("quota guard", note=session["error"])
+    except MCPError as exc:
+        session["error"] = (
+            "The search tool couldn't be reached over MCP, so I have no listings "
+            "to look at. Check that `python mcp_server.py` starts on its own, "
+            f"then try again. ({str(exc).splitlines()[0]})"
+        )
+        trace.step("mcp error", note=session["error"])
 
     return session
 

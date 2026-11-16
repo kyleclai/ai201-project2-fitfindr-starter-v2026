@@ -176,7 +176,7 @@ Note: with the cache on (the default), the same three calls returned one identic
 **Moment 1**
 
 - *What I asked for:* I gave Claude the unit 3 page and my repo and asked it to build search_listings from the spec I wrote in the Tool Inventory. The starter warned that a plain substring test lets "s" match "us 9", so I wanted to see how it handled sizes.
-- *What came back:* it split each listing's size into whole tokens ("S/M" becomes s and m, "US 8" becomes us and 8) and only counts a match if my size equals one token. That is why `M` matches `S/M` and `M/L` but not `XL`, and why `S` doesn't match `US 7`. It also returned an empty list, not None, when nothing matched.
+- *What came back:* it split each listing's size into whole tokens ("S/M" becomes s and m, "US 8" becomes us and 8) and only counts a match if my size equals one token. Which is why `M` matches `S/M` and `M/L` but not `XL`, and why `S` doesn't match `US 7`. It also returned an empty list, not None, when nothing matched.
 - *What I changed:* I didn't change the code. I checked it against the data instead of trusting it: size S only returned S and S/M listings (no shoes), and size 8 only returned the US 8 sneakers. I copied the size rule into my Tool Inventory so the spec matches the code.
 - *What I learned:* what counts as a size match is a design decision, and it has to be written in the spec. A substring test would have returned shoes for a small top, and I wouldn't have noticed until I tested criterion 5 next unit.
 

@@ -52,3 +52,39 @@ Fields: `id, title, description, category, style_tags, size, condition, price, c
 ## Notes / findings
 - Happy-path state check was done with the two model tools mocked: `selected_item` id == id received by `suggest_outfit` == id received by `create_fit_card` for 5/5 queries. Not yet confirmed with the live model.
 - Size matching is whole-token (`S/M` -> s, m) so `S` doesn't match `US 7`.
+
+
+---
+
+# Unit 4 progress tracker — testing
+
+## Milestone 1 — Move one tool onto MCP
+- [x] `search_listings` registered in `mcp_server.py` (description names types, units, empty case)
+- [x] `python mcp_client.py` lists it
+- [x] `run_agent` calls it through `mcp_client.call_tool`; result identical to the direct call
+- [x] Commit
+
+## Milestone 2 — Break it on purpose, trace it
+- [ ] Empty search triggered
+- [ ] Empty wardrobe triggered
+- [ ] Model unavailable triggered (bad key, NEW query)
+- [ ] Handlers added; trace pasted in README
+- [ ] Commit
+
+## Milestone 3 — Run the test
+- [ ] scenarios.py filled in for criteria 3, 4, 5
+- [ ] `python run_eval.py --label before`
+- [ ] Run log filled in with PASS/FAIL per try
+- [ ] Commit
+
+## Milestone 4 — Verdicts and diagnoses
+- [ ] MET/MISSED per criterion, diagnosis for each miss
+- [ ] Commit
+
+## Milestone 5 — One improvement
+- [ ] One change, `run_eval.py --label after`, both logs side by side
+- [ ] Commit
+
+## Milestone 6 — What's still broken, submit
+- [ ] What's Still Broken, MCP note, How I Used AI update
+- [ ] Push (same repo URL, already submitted)
