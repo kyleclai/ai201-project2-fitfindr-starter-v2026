@@ -246,7 +246,9 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
         "Write a short social-media caption (2 to 4 sentences) for someone "
         "showing off a thrift find. It should sound like a real post, not a "
         "product description. Mention the item, its price, and the platform "
-        "once each, and be specific about the vibe. Don't use a hashtag wall.\n\n"
+        "once each, and be specific about the vibe. Write the price as a dollar "
+        f"figure exactly like ${new_item['price']:.0f} (digits with a dollar sign), "
+        "never as words like 'bucks'. Don't use a hashtag wall.\n\n"
         f"Item: {_describe_item(new_item)}\n"
         f"Outfit idea: {outfit.strip()}"
     )
