@@ -39,7 +39,7 @@
 
 ## What This Does
 
-<!-- Three or four sentences: what a user asks for, and what they get back. -->
+FitFindr is a thrifting agent. You type what you want in plain language ("a vintage graphic tee under $30, size M"), and it searches a file of 40 secondhand listings, picks the best match, suggests outfits that combine it with pieces from your wardrobe, and writes a short caption you could post. If nothing in the listings matches, it stops early and tells you which part of the query to loosen instead of making something up.
 
 
 
@@ -59,24 +59,25 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Filters the listings file by price and size, scores what's left by keyword overlap with the description, and returns the matches best first. Does not call the model.
+- **Inputs:** `description` (str), `size` (str | None, default None), `max_price` (float | None, default None, inclusive).
+  Size match: the listing's size is split into tokens on anything that isn't a letter or digit (`"S/M"` -> `s`, `m`; `"US 8"` -> `us`, `8`), and the query size must equal one token, case-insensitively. So `M` matches `M`, `S/M`, `M/L` but not `XL` or `US 8`; `S` does not match `US 7`.
+- **Returns:** A `list[dict]` of at most `config.SEARCH_RESULT_LIMIT` (10) listing dicts, best match first. Each dict is a full listing record with `id` (str), `title` (str), `description` (str), `category` (str), `style_tags` (list[str]), `size` (str), `condition` (str), `price` (float), `colors` (list[str]), `brand` (str or None), `platform` (str).
+- **When it has nothing:** An empty list `[]` — never `None`, never an exception. That includes a description with no usable keywords.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Asks the model for one or two outfits that combine the found item with pieces the user already owns, naming those pieces.
+- **Inputs:** `new_item` (dict — one listing dict as returned by `search_listings`), `wardrobe` (dict with an `items` key holding a list of wardrobe item dicts; may be empty).
+- **Returns:** A non-empty `str` of outfit suggestions. With a non-empty wardrobe it names specific wardrobe pieces by their `name`.
+- **When it has nothing:** With an empty wardrobe (`{"items": []}`), it still returns a non-empty `str`: general styling advice for the item. It never raises and never returns `""`.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Asks the model for a short, postable caption about the find that mentions the item, its price, and its platform.
+- **Inputs:** `outfit` (str — the output of `suggest_outfit`), `new_item` (dict — the listing dict).
+- **Returns:** A `str` of two to four sentences — the caption.
+- **When it has nothing:** If `outfit` is empty or whitespace-only, returns a descriptive `str` ("Can't write a fit card without an outfit suggestion.") without calling the model. It never raises on that input.
 
 ---
 
@@ -93,13 +94,13 @@
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If `search_listings` returns an empty list, put a message in `session["error"]` that names what the user could change (drop the size, raise the price ceiling, use fewer or more general keywords) and return the session without calling `suggest_outfit` or `create_fit_card`. Otherwise, put the first result in `session["selected_item"]` and go to `suggest_outfit`, then `create_fit_card`.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** regex — a price ceiling from `under/below/less than/max/up to $N` (or a bare `$N`), a size from `size X` or `in a/an X`; whatever is left is the keyword description.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**What moves through the session:** `query` -> `parsed` (description, size, max_price) -> `search_results` -> `selected_item` -> `outfit_suggestion` -> `fit_card`. Each tool's input is read back out of the session, not passed from the previous call's local variable. `error` is set only when the run stops early.
 
 ---
 

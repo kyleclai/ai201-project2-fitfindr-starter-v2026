@@ -17,9 +17,9 @@ Check items off as they're done. Due: **Sunday, Oct 4th 11:59PM PDT** (per the u
 Fields: `id, title, description, category, style_tags, size, condition, price, colors, brand (often null), platform`
 
 ## Milestone 2 — Spec the tools (~40 min)
-- [ ] Tool Inventory in README (inputs w/ types, return, empty case) for all 3 tools
-- [ ] Branch rule written as a rule
-- [ ] Commit #2
+- [x] Tool Inventory in README (inputs w/ types, return, empty case) for all 3 tools
+- [x] Branch rule written as a rule
+- [x] Commit #2
 
 ## Milestone 3 — Acceptance criteria (~40 min)
 - [ ] `criteria.md` criteria 3, 4, 5 written (state / fit card / own choice)
