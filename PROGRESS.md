@@ -22,9 +22,9 @@ Fields: `id, title, description, category, style_tags, size, condition, price, c
 - [x] Commit #2
 
 ## Milestone 3 — Acceptance criteria (~40 min)
-- [ ] `criteria.md` criteria 3, 4, 5 written (state / fit card / own choice)
-- [ ] A "why this target" under all five
-- [ ] Commit #3
+- [x] `criteria.md` criteria 3, 4, 5 written (state / fit card / own choice)
+- [x] A "why this target" under all five
+- [x] Commit #3
 
 ## Milestone 4 — Build the tools (~85 min)
 - [ ] `search_listings` (returns `[]` on no match)

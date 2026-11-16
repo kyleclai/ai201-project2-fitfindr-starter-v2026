@@ -25,9 +25,7 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-<!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
-     "my search is a plain keyword match and some phrasings will miss" is a
-     real answer. -->
+I picked 4 of 5 rather than 5 of 5 because search is a plain keyword match against 40 listings, so a phrasing like "tee shirt" or "sneaks" can miss a listing that a person would call a match. Two of the three steps also call a model over the network, so one rate-limit or timeout in five tries is plausible. I didn't go lower because "matches at least one listing" means I only count queries where search has something to find; a miss there would be a loop or tool bug, not a data gap.
 
 ---
 
@@ -37,66 +35,34 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
-     about this path? -->
+This path never touches the model or the network: it's a filter that returns `[]` and one `if` in `run_agent`. Nothing about it varies run to run, so any miss means the branch is wrong, not that the run was unlucky. 5 of 5 is the only target that is honest for deterministic code. "Naming what to change" is checkable: the message must mention at least one of the size, the price ceiling, or the keywords that was actually in the query.
 
 ---
 
 ## 3. Something about state
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know that the item your search found is the same item the
-     next tool received? Name something countable or observable.
-
-     This is the criterion people find hardest, because state failure doesn't
-     look like state failure — it looks like a tool problem. Something that
-     compares session["selected_item"] against what actually reached
-     suggest_outfit is the shape you're after. -->
-
-
+For 5 different queries that each match something, the `id` of `session["selected_item"]` equals the `id` of the `new_item` received by `suggest_outfit`, the `id` received by `create_fit_card`, and the `id` of `session["search_results"][0]` — 5 of 5 queries, checked by wrapping both tools to record the argument they were called with.
 
 **Why this target:**
-
-
+This is a count of exact id matches, not a read of the output, because state failure looks like a tool problem: a fit card about the wrong jacket still reads fine. It's 5 of 5 because the state is plain dict reads and writes with no model in the path; one mismatch means the loop passed a stale or different value. I used `id` rather than comparing whole dicts so a harmless copy doesn't count as a failure, while a different item always does.
 
 ---
 
 ## 4. Something about the fit card
 
-<!-- YOU WRITE THIS ONE.
-
-     The fit card calls a model, so the same input can produce different words
-     each time. That's not a bug — it's the nature of the tool. So what would
-     make it acceptable?
-
-     Think about what you'd actually be unhappy to see. A caption that never
-     mentions the price? Two different items producing the same opening
-     sentence? A card longer than a caption anyone would post? Any of those can
-     be turned into a number. -->
-
-
+For 5 different items, each fit card is 2–4 sentences, contains the item's price written as a dollar amount, and names its platform, and no two of the 5 cards open with the same first five words — at least 4 of the 5 cards must pass all three checks, and the no-shared-opening check must hold across all 5.
 
 **Why this target:**
-
-
+The words will differ every run (temperature is 0.9), so I'm not testing wording; I'm testing three things I'd be unhappy to see missing: no price, no platform, or a caption that's a paragraph. 4 of 5 rather than 5 of 5 because a model sometimes writes "just $18" as "eighteen bucks" or runs to five sentences, and that's the nature of the tool. The shared-opening check has no slack because five items that open identically means the prompt is producing a template, which is the one failure I said a fit card can't have.
 
 ---
 
 ## 5. Your choice
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. Speed, the empty
-     wardrobe path, what happens when the model can't be reached, whether the
-     search respects a price ceiling — anything, as long as it names a number
-     or an observable outcome. -->
-
-
+Across 5 queries that each include a price ceiling and a size, every listing `search_listings` returns is at or under the ceiling and has the requested size as one of its size tokens — zero violations in 5 of 5 queries.
 
 **Why this target:**
-
-
+I care about this because a thrift search that returns a $55 item for "under $30", or shoes for a small top, reads as broken and makes the user stop trusting the rest. It's pure code with no model, so the target is zero violations rather than a percentage: the filter either compares correctly or it doesn't. The size tokenizer is the part most likely to fail (`"s" in "us 9"` is true with a plain substring test), which is why the check is on size too, not just price.
 
 ---
 
