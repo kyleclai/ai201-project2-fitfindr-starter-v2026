@@ -13,6 +13,8 @@ Build and test your three tools in `tools.py` first. Then come here.
     python agent.py          runs both example paths below
 """
 
+import re
+
 import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
@@ -107,9 +109,75 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     """
     session = new_session(query, wardrobe)
 
-    # TODO: delete these two lines and build the loop.
-    session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
+    # Regex parse: price ceiling, size, and whatever is left is the description.
+    session["parsed"] = parse_query(query)
+
+    # A straight-line loop with a stop condition. Each pass picks the next step
+    # from what the session holds, so the empty-search branch simply never
+    # reaches the later steps.
+    count = 0
+    while session["fit_card"] is None and session["error"] is None:
+        count += 1
+        trace.check_iterations(count)
+
+        if not session["search_results"]:
+            p = session["parsed"]
+            session["search_results"] = search_listings(
+                p["description"], size=p["size"], max_price=p["max_price"]
+            )
+            if not session["search_results"]:
+                session["error"] = _no_results_message(p)       # THE BRANCH
+            else:
+                session["selected_item"] = session["search_results"][0]
+
+        elif session["outfit_suggestion"] is None:
+            session["outfit_suggestion"] = suggest_outfit(
+                session["selected_item"], session["wardrobe"]
+            )
+
+        else:
+            session["fit_card"] = create_fit_card(
+                session["outfit_suggestion"], session["selected_item"]
+            )
+
     return session
+
+
+def parse_query(query: str) -> dict:
+    """Pull max_price, size and description out of a plain-language query."""
+    text = query
+    max_price = None
+    m = re.search(
+        r"(?:under|below|less than|max(?:imum)?|up to|at most|<=?)\s*\$?\s*(\d+(?:\.\d+)?)"
+        r"|\$\s*(\d+(?:\.\d+)?)",
+        text, re.I,
+    )
+    if m:
+        max_price = float(m.group(1) or m.group(2))
+        text = text.replace(m.group(0), " ")
+
+    size = None
+    m = re.search(r"\bsize\s+([A-Za-z0-9./]+)|\bin\s+(?:a\s+|an\s+)?(?:size\s+)?(XXS|XS|S|M|L|XL|XXL)\b", text, re.I)
+    if m:
+        size = m.group(1) or m.group(2)
+        text = text.replace(m.group(0), " ")
+
+    return {"description": " ".join(text.split()), "size": size, "max_price": max_price}
+
+
+def _no_results_message(parsed: dict) -> str:
+    tried = [f"'{parsed['description']}'"]
+    tips = []
+    if parsed["size"]:
+        tried.append(f"size {parsed['size']}")
+        tips.append("drop the size or try a nearby one")
+    if parsed["max_price"] is not None:
+        tried.append(f"under ${parsed['max_price']:.0f}")
+        tips.append("raise the price ceiling")
+    tips.append("use fewer or more general keywords (e.g. 'tee' instead of a brand name)")
+    return (
+        f"Nothing matched {', '.join(tried)}. Try to " + "; ".join(tips) + "."
+    )
 
 
 # ── running it directly ───────────────────────────────────────────────────────
