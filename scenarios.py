@@ -35,18 +35,17 @@ SCENARIOS = [
         "wardrobe": "empty",
         "criterion": None,
     },
-    # TODO: add what your criteria 3, 4 and 5 need.
-    #
-    # Set "criterion" to the number in criteria.md that the scenario tests.
-    # "criterion": None means a diagnostic run — useful to have, but it isn't
-    # one of your five, and run_eval.py marks it as such in the table.
-    #
-    # For a state criterion, any normal query works — what you're checking is
-    # what ends up in the session, not what the user typed.
-    #
-    # For a fit-card criterion, you probably want the SAME query listed more
-    # than once, or several different items, depending on what your criterion
-    # actually says.
+    # Criteria 3 and 4 each need 5 DIFFERENT items, one run per item (try i = item i).
+    {"name": "item 1: graphic tee", "query": "vintage graphic tee under $30",
+     "wardrobe": "example", "criterion": 3},
+    {"name": "item 2: track jacket", "query": "90s track jacket in size M",
+     "wardrobe": "example", "criterion": 3},
+    {"name": "item 3: sneakers", "query": "platform sneakers size 8",
+     "wardrobe": "example", "criterion": 3},
+    {"name": "item 4: slip dress", "query": "silk slip dress in midi length under $40",
+     "wardrobe": "example", "criterion": 3},
+    {"name": "item 5: denim jacket", "query": "denim jacket under $50",
+     "wardrobe": "example", "criterion": 3},
 ]
 
 WARDROBES = ("example", "empty")
@@ -64,3 +63,14 @@ def validate() -> list[str]:
                 f"it should be one of {WARDROBES}"
             )
     return problems
+
+
+# Criterion 5 is about search_listings alone (no model), so score_eval.py runs
+# these five through the MCP tool directly. Each has a price ceiling AND a size.
+SEARCH_CHECKS = [
+    "top size M under $20",
+    "jacket size S under $50",
+    "jeans size W30 under $40",
+    "tee size L under $25",
+    "sneakers size 8 under $50",
+]

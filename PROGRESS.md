@@ -65,16 +65,16 @@ Fields: `id, title, description, category, style_tags, size, condition, price, c
 - [x] Commit
 
 ## Milestone 2 — Break it on purpose, trace it
-- [ ] Empty search triggered
-- [ ] Empty wardrobe triggered
-- [ ] Model unavailable triggered (bad key, NEW query)
-- [ ] Handlers added; trace pasted in README
+- [x] Empty search triggered
+- [x] Empty wardrobe triggered
+- [x] Model unavailable triggered (bad key, NEW query)
+- [x] Handlers added; trace pasted in README
 - [ ] Commit
 
 ## Milestone 3 — Run the test
-- [ ] scenarios.py filled in for criteria 3, 4, 5
-- [ ] `python run_eval.py --label before`
-- [ ] Run log filled in with PASS/FAIL per try
+- [x] scenarios.py filled in for criteria 3, 4, 5
+- [x] before-run done with `python score_eval.py --label before` (wraps run_eval.run_once and scores PASS/FAIL), saved in results/
+- [x] Run log filled in with PASS/FAIL per try
 - [ ] Commit
 
 ## Milestone 4 — Verdicts and diagnoses
