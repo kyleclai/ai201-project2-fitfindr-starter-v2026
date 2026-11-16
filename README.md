@@ -191,15 +191,23 @@ Note: with the cache on (the default), the same three calls returned one identic
 
 **Moment 3**
 
-- *What I asked for:* I asked Claude to move `search_listings` onto MCP and to write a scorer for my five criteria, because `run_eval.py` leaves PASS/FAIL blank.
-- *What came back:* a registered tool in `mcp_server.py` plus `score_eval.py`, which applies each criterion as I worded it. The scorer counted "30 bucks" as a FAIL for the price check, because the criterion says a dollar amount.
-- *What I changed:* I kept that as a FAIL rather than loosening the check so it passed, then used it as my diagnosis.
+- *What I asked for:* I asked Claude to move `search_listings` onto MCP and to write a scorer for my five criteria, because `run_eval.py` leaves PASS/FAIL blank and I wanted the verdicts to come from the wording of my criteria, not from how I felt about the results.
+- *What came back:* two things. First, the tool registered in `mcp_server.py`, with a description written for someone who can't see my code: it names the types (`description` is a string, `max_price` is a float in whole US dollars, inclusive), says how size matching works, and says it returns an empty list and never null when nothing matches. Second, `score_eval.py`, which wraps `suggest_outfit` and `create_fit_card` to record the item id each one actually received (that's what criterion 3 needs, since the session alone can't show it) and then checks each criterion exactly as I wrote it.
+- *What I changed:* I didn't change the scorer's rules to make anything pass. The scorer marked the slip-dress card "30 bucks" as a FAIL for the price check, because criterion 4 says a dollar amount, and I kept it as a FAIL even though a person would call "30 bucks" fine. That miss is the whole basis of my diagnosis and my improvement. I also checked the MCP move by comparing `call_tool(...)` with the direct call on three queries (a normal one, the impossible one, and one with no filters) and they matched, including the empty list.
+- *What I learned:* a tool description is a contract, not a comment, which is why the empty case belongs in it. And a scorer is only as good as how you word the check: my sentence counter is a simple regex and could miscount a caption with "..." or an abbreviation, so I trust the price and platform checks more than the sentence count.
 
 **Moment 4**
 
-- *What I asked for:* I asked Claude why the slip-dress fit card said "30 bucks".
-- *What came back:* the prompt said to mention the price but never said how to write it. Claude suggested one line saying to write `$30`.
-- *What I changed:* I made only that change, then measured before and after (5 tries and the 10-card check) instead of assuming it worked.
+- *What I asked for:* after the before run I asked Claude why the slip-dress fit card said "30 bucks" and what the smallest fix was. I told it the rule: one change only, and I had to measure it.
+- *What came back:* the cause was in my prompt. It said to mention the price once but never said how to write it, so the model picked its own wording. The suggested fix was one added line telling the model to write the price exactly like `$30`, never as words like "bucks".
+- *What I changed:* only that line in `create_fit_card` in `tools.py`. Before I trusted it, I measured it two ways: the full after run (criterion 4 went from 4 of 5 to 5 of 5) and a separate check of 10 fit cards, 2 per item, with the cache off and the outfit text held fixed so only the prompt could vary (9 of 10 before, 10 of 10 after; the earlier failure was the same slip dress with "30 bucks").
+- *What I learned:* a better result after a change isn't proof. One miss in five could have been luck, and I only have three small samples pointing the same way, so the README says "it looks like it helped" and not "it worked". Holding the outfit text fixed in the 10-card check mattered too, because otherwise I couldn't tell whether the prompt or the outfit changed the result.
+
+**What I checked myself and what I didn't**
+
+- *Claude's code that I tested against the data or by running it:* the size matching (S doesn't match US 7), the empty-search stop, the empty-wardrobe and bad-key paths (I changed the key, ran a new query, then restored it), and the MCP return value.
+- *What I want to be upfront about:* Claude wrote the first draft of criteria 3 to 5 and the reasons under all five, and I had it reword them into my own tone. The unit says to use AI to attack criteria, not write them, so those targets were not fully my own call. The numbers still came out of how my code works (plain keyword search, two model calls), but a few of them turned out soft: criterion 1 passed 5 of 5 against a target of 4, and criterion 5 passes on short result lists. That is a real result of how I set them up, and I left them as written.
+- *Where Claude's answer was only partly right:* the first version of my traces printed "dict with keys: ..." instead of the real values, which would have made the trace useless for a diagnosis. I had to change the trace calls to pass readable strings so the actual item id and query show up.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
