@@ -69,22 +69,26 @@ Fields: `id, title, description, category, style_tags, size, condition, price, c
 - [x] Empty wardrobe triggered
 - [x] Model unavailable triggered (bad key, NEW query)
 - [x] Handlers added; trace pasted in README
-- [ ] Commit
+- [x] Commit
 
 ## Milestone 3 — Run the test
 - [x] scenarios.py filled in for criteria 3, 4, 5
 - [x] before-run done with `python score_eval.py --label before` (wraps run_eval.run_once and scores PASS/FAIL), saved in results/
 - [x] Run log filled in with PASS/FAIL per try
-- [ ] Commit
+- [x] Commit
 
 ## Milestone 4 — Verdicts and diagnoses
-- [ ] MET/MISSED per criterion, diagnosis for each miss
-- [ ] Commit
+- [x] MET/MISSED per criterion, diagnosis for each miss
+- [x] Commit
 
 ## Milestone 5 — One improvement
-- [ ] One change, `run_eval.py --label after`, both logs side by side
-- [ ] Commit
+- [x] One change, `run_eval.py --label after`, both logs side by side
+- [x] Commit
 
 ## Milestone 6 — What's still broken, submit
-- [ ] What's Still Broken, MCP note, How I Used AI update
-- [ ] Push (same repo URL, already submitted)
+- [x] What's Still Broken, MCP note, How I Used AI update
+- [ ] Push (same repo URL, already submitted) — waiting on you
+
+## Still yours
+- [ ] Read the README Unit 4 sections and the two new How I Used AI moments; edit anything that isn't true to what you did
+- [ ] Say "push", then confirm the Course Portal still has the same repo URL
