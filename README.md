@@ -176,14 +176,16 @@ Note: with the cache on (the default), the same three calls returned one identic
 **Moment 1**
 
 - *What I asked for:* I gave Claude the unit 3 page and my repo and asked it to build search_listings from the spec I wrote in the Tool Inventory. The starter warned that a plain substring test lets "s" match "us 9", so I wanted to see how it handled sizes.
-- *What came back:* it split each listing's size into whole tokens ("S/M" becomes s and m, "US 8" becomes us and 8) and only counts a match if my size equals one token. It returned an empty list, not None, when nothing matched.
-- *What I changed:* I didn't change the code, but I tested it myself instead of trusting it. Size S only returned S and S/M listings (no shoes), and size 8 only returned the US 8 sneakers. I also copied the size rule into my Tool Inventory so the spec matches the code.
+- *What came back:* it split each listing's size into whole tokens ("S/M" becomes s and m, "US 8" becomes us and 8) and only counts a match if my size equals one token. That is why `M` matches `S/M` and `M/L` but not `XL`, and why `S` doesn't match `US 7`. It also returned an empty list, not None, when nothing matched.
+- *What I changed:* I didn't change the code. I checked it against the data instead of trusting it: size S only returned S and S/M listings (no shoes), and size 8 only returned the US 8 sneakers. I copied the size rule into my Tool Inventory so the spec matches the code.
+- *What I learned:* what counts as a size match is a design decision, and it has to be written in the spec. A substring test would have returned shoes for a small top, and I wouldn't have noticed until I tested criterion 5 next unit.
 
 **Moment 2**
 
 - *What I asked for:* I ran create_fit_card three times on the same item to see if the captions would differ, like Milestone 4 says.
-- *What came back:* three word-for-word identical captions, even though TEMPERATURE was already 0.9. So it wasn't the temperature.
+- *What came back:* three word-for-word identical captions. TEMPERATURE was already 0.9, so it wasn't the temperature, which left the cache.
 - *What I changed:* I turned the cache off with `AI201_CACHE=0` and ran it again, and got three different captions. The cache was handing back the answer it already had. I left the code alone and added a note to my Sample Run so I remember to turn the cache off when I test in unit 4.
+- *What I learned:* a bug can come from a setting and not from my code. It also matters for criterion 4: if I tested the fit card with the cache on, I'd be measuring the cache and not the model, and I'd think the card never varied.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
