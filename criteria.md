@@ -25,7 +25,7 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-I picked 4 of 5 rather than 5 of 5 because search is a plain keyword match against 40 listings, so a phrasing like "tee shirt" or "sneaks" can miss a listing that a person would call a match. Two of the three steps also call a model over the network, so one rate-limit or timeout in five tries is plausible. I didn't go lower because "matches at least one listing" means I only count queries where search has something to find; a miss there would be a loop or tool bug, not a data gap.
+i picked 4 of 5 and not 5 of 5 because my search is just a keyword match on 40 listings, so if i type "tee shirt" or "sneaks" it can miss something a person would call a match. two of the three steps also call the model over the network, so one rate-limit or timeout in five tries could happen. i didn't go lower since the query has to match a listing, so if it fails there it's my loop or tool being broken, not the data.
 
 ---
 
@@ -35,34 +35,34 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-This path never touches the model or the network: it's a filter that returns `[]` and one `if` in `run_agent`. Nothing about it varies run to run, so any miss means the branch is wrong, not that the run was unlucky. 5 of 5 is the only target that is honest for deterministic code. "Naming what to change" is checkable: the message must mention at least one of the size, the price ceiling, or the keywords that was actually in the query.
+this path never touches the model or the network. it's a filter that returns `[]` and one `if` in `run_agent`, so nothing changes from run to run. if it misses even once the branch is wrong, so 5 of 5 is the only honest target. "naming what to change" means the message has to mention the size, price ceiling, or keywords that were actually in the query.
 
 ---
 
-## 3. Something about state
+## 3. The item search found is the same one the next tools get
 
-For 5 different queries that each match something, the `id` of `session["selected_item"]` equals the `id` of the `new_item` received by `suggest_outfit`, the `id` received by `create_fit_card`, and the `id` of `session["search_results"][0]` — 5 of 5 queries, checked by wrapping both tools to record the argument they were called with.
+for 5 different queries that each match something, the `id` in `session["selected_item"]` is the same `id` that `suggest_outfit` got, the same one `create_fit_card` got, and the same as `session["search_results"][0]` — 5 of 5 queries. i check it by wrapping both tools so they record what they were called with.
 
 **Why this target:**
-This is a count of exact id matches, not a read of the output, because state failure looks like a tool problem: a fit card about the wrong jacket still reads fine. It's 5 of 5 because the state is plain dict reads and writes with no model in the path; one mismatch means the loop passed a stale or different value. I used `id` rather than comparing whole dicts so a harmless copy doesn't count as a failure, while a different item always does.
+i'm counting exact id matches instead of reading the output, because a state bug looks like a tool bug. a fit card about the wrong jacket still reads fine. it's 5 of 5 because it's just dict reads and writes with no model involved, so one mismatch means my loop passed the wrong value. i use `id` instead of comparing the whole dict so a harmless copy doesn't fail, but a different item always does.
 
 ---
 
-## 4. Something about the fit card
+## 4. The fit card reads like a real post even though the words change
 
-For 5 different items, each fit card is 2–4 sentences, contains the item's price written as a dollar amount, and names its platform, and no two of the 5 cards open with the same first five words — at least 4 of the 5 cards must pass all three checks, and the no-shared-opening check must hold across all 5.
+for 5 different items, each fit card is 2–4 sentences, has the price as a dollar amount, and names the platform. at least 4 of the 5 cards pass all three checks, and no two of the 5 cards start with the same first five words.
 
 **Why this target:**
-The words will differ every run (temperature is 0.9), so I'm not testing wording; I'm testing three things I'd be unhappy to see missing: no price, no platform, or a caption that's a paragraph. 4 of 5 rather than 5 of 5 because a model sometimes writes "just $18" as "eighteen bucks" or runs to five sentences, and that's the nature of the tool. The shared-opening check has no slack because five items that open identically means the prompt is producing a template, which is the one failure I said a fit card can't have.
+the words are different every run (temperature is 0.9), so i'm not testing the wording. i'm checking for the three things i'd be annoyed to see missing: no price, no platform, or a caption that turns into a paragraph. i picked 4 of 5 because the model might write "eighteen bucks" instead of "$18", or run to five sentences, and that's just how the tool works. the opening-words check has no wiggle room because five items starting the same way means my prompt is making a template, which is exactly what a fit card shouldn't be.
 
 ---
 
-## 5. Your choice
+## 5. Search never shows items over my price or in the wrong size
 
-Across 5 queries that each include a price ceiling and a size, every listing `search_listings` returns is at or under the ceiling and has the requested size as one of its size tokens — zero violations in 5 of 5 queries.
+across 5 queries that each have a price ceiling and a size, every listing `search_listings` returns is at or under the ceiling and has the size i asked for as one of its size tokens. zero violations, in 5 of 5 queries.
 
 **Why this target:**
-I care about this because a thrift search that returns a $55 item for "under $30", or shoes for a small top, reads as broken and makes the user stop trusting the rest. It's pure code with no model, so the target is zero violations rather than a percentage: the filter either compares correctly or it doesn't. The size tokenizer is the part most likely to fail (`"s" in "us 9"` is true with a plain substring test), which is why the check is on size too, not just price.
+i care about this one because a thrift search that shows a $55 item for "under $30", or shoes when i asked for a small top, looks broken and makes me stop trusting the rest. it's plain code with no model, so the target is zero violations and not a percentage. the filter either compares right or it doesn't. the size part is the likeliest to break (`"s" in "us 9"` is true with a plain substring test), which is why i check size and not just price.
 
 ---
 
