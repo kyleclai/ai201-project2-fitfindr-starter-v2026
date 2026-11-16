@@ -175,15 +175,15 @@ Note: with the cache on (the default), the same three calls returned one identic
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I gave Claude the unit 3 page and my repo and asked it to build search_listings from the spec I wrote in the Tool Inventory. The starter warned that a plain substring test lets "s" match "us 9", so I wanted to see how it handled sizes.
+- *What came back:* it split each listing's size into whole tokens ("S/M" becomes s and m, "US 8" becomes us and 8) and only counts a match if my size equals one token. It returned an empty list, not None, when nothing matched.
+- *What I changed:* I didn't change the code, but I tested it myself instead of trusting it. Size S only returned S and S/M listings (no shoes), and size 8 only returned the US 8 sneakers. I also copied the size rule into my Tool Inventory so the spec matches the code.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I ran create_fit_card three times on the same item to see if the captions would differ, like Milestone 4 says.
+- *What came back:* three word-for-word identical captions, even though TEMPERATURE was already 0.9. So it wasn't the temperature.
+- *What I changed:* I turned the cache off with `AI201_CACHE=0` and ran it again, and got three different captions. The cache was handing back the answer it already had. I left the code alone and added a note to my Sample Run so I remember to turn the cache off when I test in unit 4.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 

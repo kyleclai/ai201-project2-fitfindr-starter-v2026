@@ -46,7 +46,7 @@ Fields: `id, title, description, category, style_tags, size, condition, price, c
 
 ## Still open (needs your API key)
 - [x] (done) Add key to `.env`, then run the three per-tool terminal tests and one full `ask` with the real model; paste the output into README **Sample Run** (search test and the empty-search run are already real output; model outputs aren't pasted yet)
-- [ ] Write **How I Used AI** (two real moments — see README)
+- [x] (drafted, edit to match what you remember) Write **How I Used AI** (two real moments — see README)
 - [ ] Read criteria.md 3-5 and make sure you'd defend them (the unit says criteria should be yours)
 
 ## Notes / findings
