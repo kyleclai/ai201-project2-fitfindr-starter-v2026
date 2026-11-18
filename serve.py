@@ -27,15 +27,15 @@ web server has to be. The reason is worth reading before you deploy: see the
 note above `_one_at_a_time` below — it also decides which gunicorn worker you
 can use.
 
-⚠️ There is deliberately NO logging, NO timing and NO request counting in this
-file. That is unit 9's follow-along: you instrument this yourself, first, and
-then deploy it. A structured log you were handed teaches you nothing about
-what belongs in one — and the timing field is the one everybody skips.
+Instrumented in the capstone: every /ask writes one JSON line via runlog.py
+(see its docstring for the fields), including rejected and crashed requests.
+GET / serves static/index.html, which also registers the WebMCP tool.
 """
 
 import os
 import sys
 import threading
+import time
 
 # config first, and before anything that talks to the model: it loads your .env
 # and fixes the Windows console encoding for every module that imports it.
@@ -43,6 +43,8 @@ import config  # noqa: F401
 
 from flask import Flask, jsonify, request, send_from_directory
 
+import generate
+import runlog
 from agent import run_agent
 from utils.data_loader import get_example_wardrobe
 
@@ -113,12 +115,33 @@ def ask():
                                                 example wardrobe the CLI uses.
     Out:  the session dict from run_agent(), as JSON.
     """
+    started = time.perf_counter()
+    client = request.headers.get("X-Client", "other")
+    client = client if client in ("form", "webmcp") else "other"
+    query = ""
+    try:
+        return _handle_ask(started, client)
+    except Exception as exc:  # noqa: BLE001 — the parse itself failed: log it, then re-raise
+        runlog.write(client=client, status="crash", http_status=500, query=query,
+                     output={"error": f"{type(exc).__name__}: {exc}"},
+                     duration_ms=(time.perf_counter() - started) * 1000, wait_ms=0)
+        raise
+
+
+def _handle_ask(started: float, client: str):
     payload = request.get_json(silent=True) or {}
     query = (payload.get("query") or "").strip()
+
+    def reject(message: str, status: int = 400):
+        runlog.write(client=client, status="bad_request", http_status=status, query=query,
+                     output={"error": message},
+                     duration_ms=(time.perf_counter() - started) * 1000, wait_ms=0)
+        return jsonify({"error": message}), status
+
     if not query:
         # 400 rather than a stack trace: the caller can act on this one.
-        return jsonify({"error": "Send JSON with a 'query' field, e.g. "
-                                 '{"query": "vintage graphic tee under $30"}'}), 400
+        return reject("Send JSON with a 'query' field, e.g. "
+                      '{"query": "vintage graphic tee under $30"}')
 
     wardrobe = payload.get("wardrobe")
     if not isinstance(wardrobe, dict):
@@ -126,14 +149,8 @@ def ask():
 
     # A queued request should look like a queued request. Without this the
     # second caller just sits there, and "slow" and "waiting its turn" are
-    # indistinguishable from the outside — which is how people conclude the
-    # deployment is broken when it is behaving exactly as designed.
-    #
-    # This is NOT the logging you add in the follow-along. It prints nothing
-    # on the normal path, carries no timing and counts nothing; it says only
-    # that this request had to wait. `locked()` can be a moment out of date,
-    # so the note is occasionally missed — which costs nothing, because
-    # nothing depends on it.
+    # indistinguishable from the outside. This note prints nothing else and
+    # counts nothing; the timing lives in the run log (wait_ms).
     if _one_at_a_time.locked():
         print(
             "  [serve] another request is still running. This one is waiting "
@@ -145,10 +162,27 @@ def ask():
     failure = None
     session = None
     with _one_at_a_time:
+        wait_ms = (time.perf_counter() - started) * 1000
+        # Only one agent run is in flight at a time, so the change in the
+        # module-level counters across this block is exactly this request's.
+        calls0, hits0, tok0 = generate.call_count(), generate.cache_hit_count(), generate.token_counts()
         try:
             session = run_agent(query, wardrobe)
         except Exception as exc:  # noqa: BLE001 — a 500 with a sentence beats a hang
             failure = f"{type(exc).__name__}: {exc}"
+        tok1 = generate.token_counts()
+        calls1, hits1 = generate.call_count(), generate.cache_hit_count()
+
+    status = runlog.classify(session, failure)
+    http_status = 500 if failure is not None else 200
+    runlog.write(
+        client=client, status=status, http_status=http_status, query=query,
+        output=runlog.summarize_output(session, failure),
+        duration_ms=(time.perf_counter() - started) * 1000, wait_ms=wait_ms,
+        model_calls=calls1 - calls0, cache_hits=hits1 - hits0,
+        prompt_tokens=tok1["prompt"] - tok0["prompt"],
+        output_tokens=tok1["output"] - tok0["output"],
+    )
 
     # Outside the lock: building a response is not work the next caller should
     # be waiting on.
