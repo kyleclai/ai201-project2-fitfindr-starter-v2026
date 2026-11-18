@@ -387,7 +387,7 @@ Out of scope, decided before building:
 
 **Running It**
 
-Path B: local, started with `python serve.py`, with a committed run record in `logs/runs.jsonl`. Full steps, environment and the WebMCP browser flag are at the top of [RUNNING.md](RUNNING.md). I followed RUNNING.md from a fresh clone before writing this (see Instrumentation for what it caught). Path A is configured (`render.yaml`: `gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180`) but I have not deployed it yet.
+Path B: local, started with `python serve.py`, with a committed run record in `logs/runs.jsonl`. Full steps, environment and the WebMCP browser flag are at the top of [RUNNING.md](RUNNING.md). I followed RUNNING.md from a fresh clone into a new folder. It failed the first time: on macOS port 5000 is held by AirPlay Receiver, so `python serve.py` exited with "Address already in use". RUNNING.md now gives `PORT=5001 python serve.py`. With that, the clone served the page, `/health` and a real `/ask` (I set the `X-Client: webmcp` header by hand with curl, so that record only shows the header is logged). Path A is configured (`render.yaml`: `gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180`) but I have not deployed it yet.
 
 **Instrumentation**
 
@@ -424,7 +424,6 @@ Real output from `python measure_cost.py` (10 real runs with the cache off, then
 What I noticed in the log:
 - Run 8 took 39.7 s against 2-5 s for the others, with the same two model calls and about the same tokens. The tokens say it was not a bigger request, so the time went somewhere else; I have not diagnosed it. It matters for deployment: gunicorn's default 30 s worker timeout would have killed that request, which is why `render.yaml` sets `--timeout 180`.
 - The last record is a real bug found by logging the failure path: `serve.py` assumes the body is a JSON object, so `[1, 2]` raises `AttributeError` and Flask returns an HTML 500. I left it unfixed because it belongs to the test half.
-- Writing RUNNING.md and following it from a fresh clone: see the note under What It Costs for the run that was missing.
 
 **What It Costs**
 

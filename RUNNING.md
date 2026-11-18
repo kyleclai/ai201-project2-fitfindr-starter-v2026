@@ -28,8 +28,13 @@ cp .env.example .env        # then paste your GEMINI_API_KEY into .env
 python serve.py
 ```
 
+**macOS:** port 5000 is taken by AirPlay Receiver ("Address already in use"). Either
+turn it off in System Settings, or use another port: `PORT=5001 python serve.py`,
+then open http://localhost:5001 and use that port in the `curl` below.
+
 Open http://localhost:5000. Type `vintage graphic tee under $30` and press Find.
 The first request takes 3-5 seconds; a rate-limited one can take 40.
+`logs/runs.jsonl` is committed with the author's run record; your runs append to it.
 
 Without a browser:
 

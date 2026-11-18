@@ -1,7 +1,7 @@
 # Unit 9 — Capstone: Show What You Know
 
 > Tracker for the capstone. Tick boxes and add rows to the **Update Log** as work lands.
-> Status: **In progress (M1 done)** · System: FitFindr · Shape: **C — WebMCP front door** · Path: A (Render) with Path B fallback
+> Status: **In progress (M1–M3 done; M4 criteria are YOURS to write next)** · System: FitFindr · Shape: **C — WebMCP front door** · Path: A (Render) with Path B fallback
 
 Both halves (build + test) are due this unit, in the **same repo** as the system being extended. 60 pts: 30 build, 30 test.
 Missing your own criteria costs nothing; an honest standard, honest runs, and real diagnoses are what's graded.
@@ -48,21 +48,21 @@ Missing your own criteria costs nothing; an honest standard, honest runs, and re
 - [x] Commit
 
 ### M2 — Build the extension (~90 min)
-- [ ] Build the one thing; get one path working end to end first
-- [ ] Original system still works (no regression)
-- [ ] ≥3 commits
+- [x] Build the one thing; get one path working end to end first
+- [x] Original system still works (no regression): `test.py` 10/10, CLI `ask` runs
+- [x] ≥3 commits
 - [ ] If stuck after 1 hr: cut down, and write what was cut in What's Still Broken
-- [ ] Commit
+- [x] Commit
 
 ### M3 — Run it, make it observable (~75 min)
-- [ ] Pick path; write `RUNNING.md`
-- [ ] Fresh clone into a new folder, follow `RUNNING.md` exactly; fix what's missing
-- [ ] Structured log file (readable back, not `print()`)
-- [ ] Failures leave records too
-- [ ] Cost: 10 runs, average; or time it if no spend number
-- [ ] README **Instrumentation**: ≥10 entries + ≥1 failure; **What It Costs**: number + method
-- [ ] If hosting fights back >45 min, switch to Path B and note it
-- [ ] Commit
+- [x] Pick path; write `RUNNING.md`
+- [x] Fresh clone into a new folder, follow `RUNNING.md` exactly; fix what's missing
+- [x] Structured log file (readable back, not `print()`)
+- [x] Failures leave records too
+- [x] Cost: 10 runs, average; or time it if no spend number
+- [x] README **Instrumentation**: ≥10 entries + ≥1 failure; **What It Costs**: number + method
+- [x] Path B chosen (Path A configured in `render.yaml`, not deployed)
+- [x] Commit
 
 ### M4 — Write criteria, unaided (~45 min)
 - [ ] 5 numbered criteria in `criteria.md`, each: target (number/rate/visible thing) + why that target
@@ -158,3 +158,5 @@ Open risks: WebMCP is an origin trial (Chrome 149+) / flag `chrome://flags/#enab
 | 2026-11-18 | Pre-M1 | Added `architecture.excalidraw` (entry points, agent loop, MCP boundary, LLM path/cache, trace, failure path) | — |
 | 2026-11-18 | M1 | README `## Capstone` skeleton: What This Extends, The Shape, out-of-scope | see git log |
 | 2026-11-18 | Pre-M1 | Read L9 slides into tracker; researched WebMCP; drafted Shape C candidate | — |
+| 2026-11-18 | M2 | `static/index.html` (form + WebMCP `find_fit` registration, feature-detects `document.modelContext` then `navigator.modelContext`); `GET /` in `serve.py`. Page JS checked against a jsdom stub, NOT real Chrome. | see git log |
+| 2026-11-18 | M3 | `runlog.py` JSONL log on every `/ask`; `measure_cost.py`; `RUNNING.md` capstone section; `render.yaml`; README Running It / Instrumentation / What It Costs. Clean-clone run failed first on macOS port 5000 (AirPlay) → documented `PORT=5001`. Measured: 710 tokens, 2 model calls, median 3.6 s (one 39.7 s outlier, undiagnosed) per run. Found: non-object JSON body → HTML 500. | see git log |
