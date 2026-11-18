@@ -370,4 +370,49 @@ Full output: `results/scored_2026-11-15_1852_after.md`.
 
 ---
 
+## Capstone
+
+**What This Extends**
+
+FitFindr, my unit 3–4 agent: parse a query, search 40 listings (over MCP), write an outfit, write a fit card. New this unit: a one-page web front end served from `serve.py`, a single WebMCP tool (`find_fit`) registered on that page so a browser agent can call FitFindr, and structured logging around every `/ask` request.
+
+**The Shape**
+
+Shape C, extend one capability. The capability is "a browser agent can call FitFindr as a tool." The page registers one WebMCP tool, `find_fit`, whose `execute` calls the existing `POST /ask` and returns the item, outfit and fit card (or the `session.error` message). The page also has a plain form that hits the same endpoint, so it works in any browser without WebMCP. Logging and the run path are required alongside, as for every shape.
+
+Out of scope, decided before building:
+- No second tool, and no moving `suggest_outfit` or `create_fit_card` onto MCP. Search stays the only MCP tool.
+- No change to the agent loop, the search matching, or the prompts. `run_agent()` is untouched.
+- No UI polish, auth, accounts, or non-Chrome WebMCP support. The page exists to carry the tool.
+
+**Running It**
+
+_(written in Milestone 3, see [RUNNING.md](RUNNING.md))_
+
+**Instrumentation**
+
+_(Milestone 3)_
+
+**What It Costs**
+
+_(Milestone 3)_
+
+**Run Log and Verdicts**
+
+_(Milestones 5–6)_
+
+**The Improvement**
+
+_(Milestone 6)_
+
+**What's Still Broken**
+
+_(Milestone 7)_
+
+**How I Used AI**
+
+_(Milestone 7)_
+
+---
+
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
