@@ -28,7 +28,7 @@ import serve   # noqa: E402
 
 QUERIES = [
     "vintage graphic tee under $30",
-    "baggy jeans size M",
+    "baggy jeans",
     "black leather jacket under $80",
     "cropped hoodie",
     "denim jacket under $60",
@@ -69,6 +69,7 @@ def main() -> int:
     print(f"mean prompt tokens / run: {pin:.0f}")
     print(f"mean output tokens / run: {pout:.0f}")
     print(f"mean total tokens / run:  {pin + pout:.0f}")
+    print(f"median duration / run:    {statistics.median(r['duration_ms'] for r in ok) / 1000:.2f} s")
     print(f"mean duration / run:      {mean('duration_ms') / 1000:.2f} s "
           f"(min {min(r['duration_ms'] for r in ok) / 1000:.2f}, "
           f"max {max(r['duration_ms'] for r in ok) / 1000:.2f})")

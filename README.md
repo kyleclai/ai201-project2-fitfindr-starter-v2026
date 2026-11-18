@@ -387,15 +387,60 @@ Out of scope, decided before building:
 
 **Running It**
 
-_(written in Milestone 3, see [RUNNING.md](RUNNING.md))_
+Path B: local, started with `python serve.py`, with a committed run record in `logs/runs.jsonl`. Full steps, environment and the WebMCP browser flag are at the top of [RUNNING.md](RUNNING.md). I followed RUNNING.md from a fresh clone before writing this (see Instrumentation for what it caught). Path A is configured (`render.yaml`: `gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180`) but I have not deployed it yet.
 
 **Instrumentation**
 
-_(Milestone 3)_
+`runlog.py` appends one JSON line per `POST /ask` to `logs/runs.jsonl`, called from `serve.py::_handle_ask`. Rejected and crashed requests are logged too. Fields on every record:
+
+| Field | Meaning |
+|---|---|
+| `timestamp`, `run_id` | UTC time, and 8 hex chars to quote a record |
+| `client` | `form`, `webmcp` or `other` (from an `X-Client` header the page sets), so a person and an agent can be told apart |
+| `level`, `status`, `http_status` | INFO/WARNING/ERROR; `ok`, `no_results`, `bad_request`, `model_unavailable`, `quota_guard`, `mcp_error`, `crash` |
+| `input` | the query |
+| `output` | chosen item id/title, outfit and fit-card length, and `error` text. The full generated text is not logged |
+| `duration_ms`, `wait_ms` | whole request, and the part of it spent queued behind another request |
+| `model_calls`, `cache_hits`, `prompt_tokens`, `output_tokens` | what this request spent, taken from `generate.py`'s counters |
+
+Real output from `python measure_cost.py` (10 real runs with the cache off, then three failure probes). The first ten lines are successful runs, the last three are failed ones: an empty query (400), a query that matches nothing (200 with a `no_results` message), and a JSON body that is a list instead of an object (500).
+
+```json
+{"timestamp": "2026-11-18T21:29:21.279841+00:00", "run_id": "ac30ff8c", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "vintage graphic tee under $30"}, "output": {"item_id": "lst_006", "item_title": "Graphic Tee — 2003 Tour Bootleg Style", "outfit_chars": 599, "fit_card_chars": 214, "error": null}, "duration_ms": 3434, "wait_ms": 0, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 552, "output_tokens": 178}
+{"timestamp": "2026-11-18T21:29:24.326701+00:00", "run_id": "f6355ddd", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "baggy jeans"}, "output": {"item_id": "lst_031", "item_title": "Baggy Carpenter Jeans — Dark Wash", "outfit_chars": 561, "fit_card_chars": 246, "error": null}, "duration_ms": 3045, "wait_ms": 0, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 560, "output_tokens": 188}
+{"timestamp": "2026-11-18T21:29:28.340404+00:00", "run_id": "86d0ddba", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "black leather jacket under $80"}, "output": {"item_id": "lst_022", "item_title": "90s Leather Bomber — Black", "outfit_chars": 509, "fit_card_chars": 222, "error": null}, "duration_ms": 4011, "wait_ms": 0, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 541, "output_tokens": 174}
+{"timestamp": "2026-11-18T21:29:31.618673+00:00", "run_id": "e5ba0b79", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "cropped hoodie"}, "output": {"item_id": "lst_015", "item_title": "Vintage Graphic Hoodie — Faded Black", "outfit_chars": 484, "fit_card_chars": 228, "error": null}, "duration_ms": 3276, "wait_ms": 0, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 512, "output_tokens": 152}
+{"timestamp": "2026-11-18T21:29:34.205355+00:00", "run_id": "51e6ee35", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "denim jacket under $60"}, "output": {"item_id": "lst_007", "item_title": "Denim Jacket — Light Wash, Cropped", "outfit_chars": 451, "fit_card_chars": 250, "error": null}, "duration_ms": 2584, "wait_ms": 1, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 500, "output_tokens": 150}
+{"timestamp": "2026-11-18T21:29:37.741692+00:00", "run_id": "dd0e9958", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "vintage graphic tee under $30"}, "output": {"item_id": "lst_006", "item_title": "Graphic Tee — 2003 Tour Bootleg Style", "outfit_chars": 584, "fit_card_chars": 279, "error": null}, "duration_ms": 3534, "wait_ms": 0, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 545, "output_tokens": 187}
+{"timestamp": "2026-11-18T21:29:41.426690+00:00", "run_id": "289013af", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "baggy jeans"}, "output": {"item_id": "lst_031", "item_title": "Baggy Carpenter Jeans — Dark Wash", "outfit_chars": 563, "fit_card_chars": 289, "error": null}, "duration_ms": 3682, "wait_ms": 0, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 551, "output_tokens": 192}
+{"timestamp": "2026-11-18T21:30:21.158970+00:00", "run_id": "6d1b72cc", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "black leather jacket under $80"}, "output": {"item_id": "lst_022", "item_title": "90s Leather Bomber — Black", "outfit_chars": 526, "fit_card_chars": 220, "error": null}, "duration_ms": 39729, "wait_ms": 0, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 545, "output_tokens": 181}
+{"timestamp": "2026-11-18T21:30:26.587805+00:00", "run_id": "2be41aad", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "cropped hoodie"}, "output": {"item_id": "lst_015", "item_title": "Vintage Graphic Hoodie — Faded Black", "outfit_chars": 576, "fit_card_chars": 228, "error": null}, "duration_ms": 5424, "wait_ms": 1, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 531, "output_tokens": 169}
+{"timestamp": "2026-11-18T21:30:31.705558+00:00", "run_id": "c4a57d89", "client": "other", "level": "INFO", "status": "ok", "http_status": 200, "input": {"query": "denim jacket under $60"}, "output": {"item_id": "lst_007", "item_title": "Denim Jacket — Light Wash, Cropped", "outfit_chars": 560, "fit_card_chars": 243, "error": null}, "duration_ms": 5116, "wait_ms": 0, "model_calls": 2, "cache_hits": 0, "prompt_tokens": 522, "output_tokens": 175}
+{"timestamp": "2026-11-18T21:30:31.706686+00:00", "run_id": "5a4ecbd6", "client": "other", "level": "WARNING", "status": "bad_request", "http_status": 400, "input": {"query": ""}, "output": {"error": "Send JSON with a 'query' field, e.g. {\"query\": \"vintage graphic tee under $30\"}"}, "duration_ms": 0, "wait_ms": 0, "model_calls": 0, "cache_hits": 0, "prompt_tokens": 0, "output_tokens": 0}
+{"timestamp": "2026-11-18T21:30:32.098084+00:00", "run_id": "a22b5af3", "client": "other", "level": "WARNING", "status": "no_results", "http_status": 200, "input": {"query": "neon spacesuit under $1"}, "output": {"item_id": null, "item_title": null, "outfit_chars": 0, "fit_card_chars": 0, "error": "Nothing matched 'neon spacesuit', under $1. Try to raise the price ceiling; use fewer or more general keywords (e.g. 'tee' instead of a brand name)."}, "duration_ms": 391, "wait_ms": 0, "model_calls": 0, "cache_hits": 0, "prompt_tokens": 0, "output_tokens": 0}
+{"timestamp": "2026-11-18T21:30:32.099082+00:00", "run_id": "1813218e", "client": "other", "level": "ERROR", "status": "crash", "http_status": 500, "input": {"query": ""}, "output": {"error": "AttributeError: 'list' object has no attribute 'get'"}, "duration_ms": 0, "wait_ms": 0, "model_calls": 0, "cache_hits": 0, "prompt_tokens": 0, "output_tokens": 0}
+```
+
+What I noticed in the log:
+- Run 8 took 39.7 s against 2-5 s for the others, with the same two model calls and about the same tokens. The tokens say it was not a bigger request, so the time went somewhere else; I have not diagnosed it. It matters for deployment: gunicorn's default 30 s worker timeout would have killed that request, which is why `render.yaml` sets `--timeout 180`.
+- The last record is a real bug found by logging the failure path: `serve.py` assumes the body is a JSON object, so `[1, 2]` raises `AttributeError` and Flask returns an HTML 500. I left it unfixed because it belongs to the test half.
+- Writing RUNNING.md and following it from a fresh clone: see the note under What It Costs for the run that was missing.
 
 **What It Costs**
 
-_(Milestone 3)_
+Measured with `python measure_cost.py`: 10 real runs, cache off (`AI201_CACHE=0`), five queries twice, each through the instrumented `/ask`. Numbers are averaged from the log records above, not from a pricing page.
+
+| Per successful run | Mean |
+|---|---|
+| Model calls | 2.0 (`suggest_outfit`, `create_fit_card`; search is local) |
+| Prompt tokens | 536 |
+| Output tokens | 175 |
+| Total tokens | 710 |
+| Duration | median 3.6 s, mean 7.4 s (min 2.6 s, max 39.7 s) |
+
+The mean is dragged up by one 39.7 s run, so the median is the honest "typical". Runs that find nothing cost 0 tokens and about 0.4 s.
+
+For a hundred people a day, one run each: 100 x 710 = 71,000 tokens a day (about 53,600 in and 17,500 out), 200 model calls, and about 100 x 3.6 s = 6 minutes of compute, one request at a time. I have not put a dollar figure on it: the course runs on Gemini's free tier, which bills $0, and I have not read this model's paid prices. The dollar figure is 53,600 x (input price) + 17,500 x (output price) per day; `measure_cost.py` computes it if `PRICE_IN_PER_M` and `PRICE_OUT_PER_M` are set.
 
 **Run Log and Verdicts**
 

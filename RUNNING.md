@@ -1,3 +1,68 @@
+# Running FitFindr (Capstone: web page + WebMCP tool)
+
+**Start here.** Everything after the first horizontal rule is the starter's
+original guide.
+
+**Path:** B (local, with logs) is documented and tested. Path A (Render) is
+configured in `render.yaml` but not deployed yet; see "Hosted" at the end of this section.
+
+## What you need
+
+| Thing | Value |
+|---|---|
+| Python | 3.11, 3.12 or 3.13 (not 3.14). Tested on 3.12.7, macOS |
+| Dependencies | pinned in `requirements.txt` (`flask`, `gunicorn`, `mcp`, `google-genai`, `python-dotenv`, `certifi`) |
+| Model files | none. The model is Gemini over the API, so no local weights, no GPU, well under 512 MB of RAM |
+| Secret | a `GEMINI_API_KEY` in `.env` (copy `.env.example`) |
+| Browser | any browser for the form. To see the WebMCP tool: Chrome 149+ with `chrome://flags/#enable-webmcp-testing` set to Enabled, then relaunch |
+
+## Start it (clean checkout)
+
+```bash
+git clone https://github.com/kyleclai/ai201-project2-fitfindr-starter-v2026.git
+cd ai201-project2-fitfindr-starter-v2026
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env        # then paste your GEMINI_API_KEY into .env
+python serve.py
+```
+
+Open http://localhost:5000. Type `vintage graphic tee under $30` and press Find.
+The first request takes 3-5 seconds; a rate-limited one can take 40.
+
+Without a browser:
+
+```bash
+curl -X POST http://localhost:5000/ask -H 'Content-Type: application/json' \
+  -d '{"query": "vintage graphic tee under $30"}'
+```
+
+Every request appends one JSON line to `logs/runs.jsonl`. Read it back with
+`tail -n 3 logs/runs.jsonl`.
+
+## What you should see
+
+- The page shows a **WebMCP status line** at the bottom: either "tool find_fit
+  registered" (flag on) or "not available in this browser" (the form still works).
+- A matching query returns Found / Outfit / Fit card. `neon spacesuit under $1`
+  returns a red "Could not finish" card saying what to change.
+
+## Cost and measurements
+
+```bash
+python measure_cost.py      # 10 real runs, cache off, + 3 failure probes
+```
+
+## Hosted (Path A, not yet deployed)
+
+`render.yaml` is ready: new Blueprint on Render, connect the repo, set
+`GEMINI_API_KEY`. Start command: `gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180`.
+Free tier sleeps after ~15 min idle (first request ~1 min) and has no persistent
+disk, so `logs/` is wiped on sleep; copy entries into the README the same session.
+
+---
+
 # Running FitFindr
 
 Everything about how the starter works and how to use it.

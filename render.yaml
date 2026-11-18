@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: fitfindr
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Plain sync gunicorn worker (an async worker breaks every MCP call, see
+    # serve.py). --timeout 180 because a run that hits a rate-limit retry takes
+    # well over gunicorn's 30 s default and would be killed mid-request.
+    startCommand: gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false          # paste it in the Render dashboard, never in git
+      - key: PYTHON_VERSION
+        value: 3.12.7
