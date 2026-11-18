@@ -23,7 +23,9 @@ Fields (all present on every record):
     prompt_tokens / output_tokens
                      tokens the service reported for this request
 
-Logging must never break a request: write() swallows its own errors.
+Each record is also printed to stdout prefixed `RUNLOG ` so a host's log viewer
+(e.g. Render's Logs tab) shows it. Logging must never break a request: write()
+swallows its own errors.
 """
 
 import json
@@ -100,11 +102,18 @@ def write(*, client, status, http_status, query, output, duration_ms, wait_ms,
         "prompt_tokens": prompt_tokens,
         "output_tokens": output_tokens,
     }
+    line = json.dumps(record, ensure_ascii=False)
     try:
         with _write_lock:
             LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
             with LOG_PATH.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+                fh.write(line + "\n")
     except Exception:  # noqa: BLE001 — a log problem must not fail the request
+        pass
+    # Also to stdout: a host's log viewer shows what the process prints, and on a
+    # free instance the file above is wiped when it sleeps.
+    try:
+        print("RUNLOG " + line, flush=True)
+    except Exception:  # noqa: BLE001
         pass
     return record
