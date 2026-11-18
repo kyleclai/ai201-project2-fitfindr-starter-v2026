@@ -41,7 +41,7 @@ import threading
 # and fixes the Windows console encoding for every module that imports it.
 import config  # noqa: F401
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 
 from agent import run_agent
 from utils.data_loader import get_example_wardrobe
@@ -89,6 +89,12 @@ app = Flask(__name__)
 #     gunicorn -k gevent serve:app    ← breaks every MCP call you make
 
 _one_at_a_time = threading.Lock()
+
+
+@app.get("/")
+def index():
+    """The one-page front end. It also registers the WebMCP tool (static/index.html)."""
+    return send_from_directory(app.static_folder, "index.html")
 
 
 @app.get("/health")

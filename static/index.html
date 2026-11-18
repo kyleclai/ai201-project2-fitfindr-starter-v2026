@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FitFindr</title>
+<style>
+  :root { --bg:#faf8f5; --fg:#1d1b19; --muted:#6b645c; --card:#fff; --line:#e4ded6; --accent:#6741d9; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161412; --fg:#f1ede8; --muted:#a39b91; --card:#201d1a; --line:#38332e; --accent:#a78bfa; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  form { display:flex; gap:8px; }
+  input[type=text] { flex:1; min-width:0; padding:10px 12px; font:inherit; color:var(--fg);
+    background:var(--card); border:1px solid var(--line); border-radius:8px; }
+  button { padding:10px 16px; font:inherit; font-weight:600; color:#fff; background:var(--accent);
+    border:0; border-radius:8px; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:16px; }
+  .card h2 { margin:0 0 4px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .card p { margin:0; white-space:pre-wrap; }
+  .err { border-color:#e03131; }
+  #status { margin-top:32px; font-size:13px; color:var(--muted); }
+  #status b { color:var(--fg); }
+  .hint { color:var(--muted); font-size:14px; margin-top:8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>FitFindr</h1>
+  <p class="sub">Describe a thrifted piece. I find a listing, style an outfit from your wardrobe, and write the fit card.</p>
+
+  <form id="ask" aria-label="Ask FitFindr">
+    <input id="q" type="text" name="query" placeholder="vintage graphic tee under $30" autocomplete="off" required>
+    <button id="go" type="submit">Find</button>
+  </form>
+  <p class="hint">A request can take 10–20 seconds (two model calls), and about a minute if the server was asleep.</p>
+
+  <div id="out" aria-live="polite"></div>
+
+  <p id="status">WebMCP: checking…</p>
+</main>
+
+<script>
+const out = document.getElementById('out');
+const statusEl = document.getElementById('status');
+
+function card(title, text, cls) {
+  const d = document.createElement('div');
+  d.className = 'card' + (cls ? ' ' + cls : '');
+  const h = document.createElement('h2'); h.textContent = title;
+  const p = document.createElement('p'); p.textContent = text;
+  d.append(h, p);
+  return d;
+}
+
+// One path for both callers. `source` is "form" or "webmcp" and goes to the
+// server in a header so the run log can tell a person from an agent.
+async function findFit(query, source) {
+  const res = await fetch('/ask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Client': source },
+    body: JSON.stringify({ query }),
+  });
+  let body = {};
+  try { body = await res.json(); } catch (_) { /* non-JSON error page */ }
+  if (!res.ok) {
+    return { ok: false, error: body.error || ('HTTP ' + res.status) };
+  }
+  if (body.error) return { ok: false, error: body.error };
+  const item = body.selected_item || {};
+  return {
+    ok: true,
+    item: { id: item.id, title: item.title, price: item.price, platform: item.platform },
+    outfit: body.outfit_suggestion,
+    fit_card: body.fit_card,
+  };
+}
+
+function render(result) {
+  out.replaceChildren();
+  if (!result.ok) { out.append(card('Could not finish', result.error, 'err')); return; }
+  const it = result.item;
+  out.append(
+    card('Found', `${it.title} — $${it.price} on ${it.platform}`),
+    card('Outfit', result.outfit),
+    card('Fit card', result.fit_card),
+  );
+}
+
+document.getElementById('ask').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('go');
+  btn.disabled = true;
+  out.replaceChildren(card('Working', 'Searching listings and writing your outfit…'));
+  try { render(await findFit(document.getElementById('q').value, 'form')); }
+  catch (err) { render({ ok: false, error: 'Network error: ' + err.message }); }
+  btn.disabled = false;
+});
+
+// ── WebMCP ──────────────────────────────────────────────────────────────────
+// Chrome documents document.modelContext (origin trial from Chrome 149, or the
+// chrome://flags/#enable-webmcp-testing flag). Some older builds and blog posts
+// use navigator.modelContext, so try that second. If neither exists the page is
+// just a form.
+(async function registerWebMcp() {
+  const mc = document.modelContext || navigator.modelContext;
+  if (!mc || typeof mc.registerTool !== 'function') {
+    statusEl.innerHTML = 'WebMCP: <b>not available in this browser</b>. The form above still works.';
+    return;
+  }
+  try {
+    await mc.registerTool({
+      name: 'find_fit',
+      description: 'Find one thrifted clothing listing matching a plain-language request ' +
+        '(for example "vintage graphic tee under $30, size M"), then return a suggested ' +
+        'outfit from the user\'s wardrobe and a short fit-card post. Returns an error ' +
+        'message instead if nothing matches.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'What to find: item, style, optional size, optional price ceiling.' },
+        },
+        required: ['query'],
+      },
+      annotations: { readOnlyHint: true },
+      execute: async (input) => {
+        const query = (input && typeof input.query === 'string') ? input.query.trim() : '';
+        if (!query) return JSON.stringify({ ok: false, error: 'query is required: a non-empty string.' });
+        out.replaceChildren(card('Agent request', query));
+        let result;
+        try { result = await findFit(query, 'webmcp'); }
+        catch (err) { result = { ok: false, error: 'Network error: ' + err.message }; }
+        render(result);
+        return JSON.stringify(result);
+      },
+    });
+    statusEl.innerHTML = 'WebMCP: <b>tool find_fit registered</b>.';
+  } catch (err) {
+    statusEl.innerHTML = 'WebMCP: registration failed (' + String(err.message || err) + '). The form still works.';
+  }
+})();
+</script>
+</body>
+</html>
