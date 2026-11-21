@@ -495,10 +495,14 @@ Criterion 8 parity with run_agent
 | 6 Every call logged | 10 of 10 records, right `client` | 10/10 in all three | Met |
 | 7 Bad input fails properly | 5 of 5 | 2/5 in all three (empty, whitespace pass; number, list body, 5000 chars fail) | **Not met** |
 | 8 Parity with `run_agent()` | 3 of 3 queries | 3/3 in all three | Met |
-| 9 RUNNING.md alone is enough | 3 of 3 readers | not run yet: needs people | Open |
-| 10 Browser setup works from the steps | 3 of 3 fresh profiles | not run yet: needs fresh Chrome profiles | Open |
+| 9 RUNNING.md alone is enough | 3 of 3 readers | Not measured: no timed attempts. Informally, peers who opened the hosted site and tried the WebMCP setup got results; no one started it locally from RUNNING.md | **Not verified** |
+| 10 Browser setup works from the steps | 3 of 3 fresh profiles | Informal: peers who set up Chrome, the flag and the extension saw the page say the tool was registered and everything worked; I did not count attempts or profiles | **Likely met, not counted** |
 
 Honest limits on the passes: criterion 6 wrote to a scratch log file, not the Render one, and calls the app in-process, so it shows the logging code is complete, not that the hosted instance's log works. Criterion 8 ran with the cache on, so the outfit and fit card text were identical to `run_agent()`'s because both read the same cached answers; only the item id and the price ceiling are independent evidence. It also called `/ask` directly, not the page's JavaScript `find_fit`, so the browser side of the contract is not covered.
+
+**Criteria 9 and 10, what actually happened:** Demo Day time went to questions about how it works, so nobody ran these as trials. I am reporting what peers told me, not a 3-of-3 count. The one thing criterion 9 asked for that nobody did is start the project locally from a clean clone using RUNNING.md alone; the only clean-clone run is mine, from before the criteria were written (it found the macOS port 5000 problem).
+
+**Hosted run log (from Render's Logs tab):** the `RUNLOG` lines from the deployed instance are in `logs/render_runlog.jsonl` (11 records, copied from the Render log export; the rest of that export is HTTP health-check noise and is not committed). They show the hosted log works: records exist with `client: "form"` and one with `client: "webmcp"` (`vintage sweater under $45 size L`, 6.9 s, 2 model calls, 680 tokens). They also show cold-and-slow cases: a form run of 22.9 s and one of 24.7 s with the same 2 model calls and about 760 tokens, and several 4 s runs with `model_calls: 0`, which are cache hits on repeated queries.
 
 **Diagnosis of criterion 7:** three separate causes, all in `serve.py::_handle_ask`, which assumed the body was a JSON object with a string `query`. A number made `.strip()` raise `AttributeError: 'int' object has no attribute 'strip'`; a list body failed the same way on `payload.get`; both came back as an HTML 500 and were logged as `crash`. The 5,000-character query had no check at all, so it went through the whole agent (two model calls) and returned 200. The agent behaved correctly in each case; the server never looked at the input first.
 
@@ -561,7 +565,8 @@ Criterion 8 parity with run_agent
 
 **What's Still Broken**
 
-- Criteria 9 and 10 have not been run. They need a person following RUNNING.md and a Chrome profile that has never enabled the flag. I wrote RUNNING.md and I know the steps, so I can't be the test subject.
+- Criteria 9 and 10 were not measured (see above). A real check needs a person following RUNNING.md alone, including a local start, and a Chrome profile that has never enabled the flag.
+- **Multi-item queries silently return one item.** Peers tried "tee and skirt", "skirt and tee" and "tee and dress" and some got the same output. I reproduced it on the search step: `parse_query` does not split a request, search matches words in any order and `run_agent` keeps only the top-ranked listing. "tee and skirt", "skirt and tee" and plain "tee" all return `lst_002` (Y2K Baby Tee) first; "skirt" alone matches nothing because the 40 listings contain no skirt; "tee and dress" and "dress and tee" also return the tee first. The hosted log shows the same: "I want to get a jacket and skirt" and "I want to get a jacket" both returned `lst_007`. Nothing tells the user the second item was dropped. I did not check what peers saw when they reported multiple fit cards; the outfit text can contain more than one look, which may look like several cards. Two of the repeated hosted runs also hit the cache, so identical output there is partly the cache. I have not fixed this: the capstone allows one improvement, and the fix (split the request, search each part, tell the user what was dropped) changes the agent, not the front door.
 - No end-to-end run of a real agent calling `find_fit` has succeeded. The Tool Inspector's chat step called Google's `gemini-3.6-flash` and returned HTTP 503. The trace showed the tool and its schema reached the model, so that part works. Execute Tool with a typed query is the only path I have exercised.
 - One local run took 39.7 s with the same two model calls and tokens as the 3 s runs. I never found out why, so I can't say whether it was a rate-limit pause, the MCP subprocess start or the network. The log records `wait_ms` and `duration_ms` but not time inside the model call, so it can't separate them.
 - `find_fit` returns finished prose, so the calling agent pays tokens for text it could have written itself. A smaller tool that returns only the search result would be cheaper and would leave the writing to the agent. Next idea: a B2B version where a distributor's site exposes order tools to buyers' agents, which also needs auth and confirmation steps this version does not have.
@@ -569,7 +574,9 @@ Criterion 8 parity with run_agent
 
 **How I Used AI**
 
-_(Milestone 7: yours to write, with two specific moments.)_
+**Moment 1: telling a placeholder from a bug.** I ran a query in the Model Context Tool Inspector and got `{"ok":false,"error":"Nothing matched 'example_string'..."}`. I took it for a bug in my tool. The AI pointed out that `example_string` is the inspector's own default argument for a string field, so the tool had been called with a dummy query and correctly said nothing matched. The trace then showed that `find_fit` and its schema did reach the model. When I tried the inspector's chat step, it failed with HTTP 503 from Google's `gemini-3.6-flash`, which is the extension's model and not my project. So I use Execute Tool with a real query as the path I can rely on, and the README says the real-agent run is still unproven.
+
+**Moment 2: making the idea easier to explain.** I used the AI to simplify my language and to draw architecture diagrams in Excalidraw: a technical one, then one for the capstone, then a plain-language one for a wider audience. I wanted guides that tied the new idea back to earlier units, and I learn visually. I rearranged them in Obsidian, added my own "before this unit" paragraph, and put one real run's numbers on the overview. At Demo Day those diagrams were what I used to explain WebMCP and tool calls to people who had not seen the project.
 
 ---
 

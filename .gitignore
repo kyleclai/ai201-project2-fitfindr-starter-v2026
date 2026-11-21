@@ -21,3 +21,9 @@ Thumbs.db
 
 # NOTE: results/ is deliberately NOT ignored. Your run logs are evidence that
 # the test actually happened, and they're part of what gets graded. Commit them.
+
+# Capstone: local notes, exports and slides that are not part of the submission
+unit_9_render_deployment_logs.md
+"AI201 L9 · Fa26 S1a.pdf"
+*Class 10.md
+Attachments/
