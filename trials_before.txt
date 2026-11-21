@@ -1,0 +1,36 @@
+Criterion 6 every call logged
+  trial 1: records 10/10, clients match: True  -> PASS
+  trial 2: records 10/10, clients match: True  -> PASS
+  trial 3: records 10/10, clients match: True  -> PASS
+  => 3/3 trials pass
+Criterion 7 bad input fails properly
+  trial 1: empty       http=400 json_error=True -> PASS
+  trial 1: whitespace  http=400 json_error=True -> PASS
+  trial 1: number      http=500 json_error=False -> FAIL
+  trial 1: list body   http=500 json_error=False -> FAIL
+  trial 1: 5000 chars  http=200 json_error=False -> FAIL
+  trial 1: 2/5
+  trial 2: empty       http=400 json_error=True -> PASS
+  trial 2: whitespace  http=400 json_error=True -> PASS
+  trial 2: number      http=500 json_error=False -> FAIL
+  trial 2: list body   http=500 json_error=False -> FAIL
+  trial 2: 5000 chars  http=200 json_error=False -> FAIL
+  trial 2: 2/5
+  trial 3: empty       http=400 json_error=True -> PASS
+  trial 3: whitespace  http=400 json_error=True -> PASS
+  trial 3: number      http=500 json_error=False -> FAIL
+  trial 3: list body   http=500 json_error=False -> FAIL
+  trial 3: 5000 chars  http=200 json_error=False -> FAIL
+  trial 3: 2/5
+  => 0/3 trials pass
+Criterion 8 parity with run_agent
+  trial 1: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 1: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 1: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  => 3/3 trials pass
