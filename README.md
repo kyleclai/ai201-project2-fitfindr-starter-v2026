@@ -449,19 +449,127 @@ For a hundred people a day, one run each: 100 x 710 = 71,000 tokens a day (about
 
 **Run Log and Verdicts**
 
-_(Milestones 5–6)_
+Criteria are 6–10 in [criteria.md](criteria.md), committed in `ba910bb` before any trial. `trials.py` runs criteria 6–8 (three trials each, through the Flask test client). Output below is pasted from `trials_before.txt`; the same script, unchanged, produced `trials_after.txt`.
+
+```
+Criterion 6 every call logged
+  trial 1: records 10/10, clients match: True  -> PASS
+  trial 2: records 10/10, clients match: True  -> PASS
+  trial 3: records 10/10, clients match: True  -> PASS
+  => 3/3 trials pass
+Criterion 7 bad input fails properly
+  trial 1: empty       http=400 json_error=True -> PASS
+  trial 1: whitespace  http=400 json_error=True -> PASS
+  trial 1: number      http=500 json_error=False -> FAIL
+  trial 1: list body   http=500 json_error=False -> FAIL
+  trial 1: 5000 chars  http=200 json_error=False -> FAIL
+  trial 1: 2/5
+  trial 2: empty       http=400 json_error=True -> PASS
+  trial 2: whitespace  http=400 json_error=True -> PASS
+  trial 2: number      http=500 json_error=False -> FAIL
+  trial 2: list body   http=500 json_error=False -> FAIL
+  trial 2: 5000 chars  http=200 json_error=False -> FAIL
+  trial 2: 2/5
+  trial 3: empty       http=400 json_error=True -> PASS
+  trial 3: whitespace  http=400 json_error=True -> PASS
+  trial 3: number      http=500 json_error=False -> FAIL
+  trial 3: list body   http=500 json_error=False -> FAIL
+  trial 3: 5000 chars  http=200 json_error=False -> FAIL
+  trial 3: 2/5
+  => 0/3 trials pass
+Criterion 8 parity with run_agent
+  trial 1: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 1: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 1: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  => 3/3 trials pass
+```
+
+| Criterion | Target | Before (3 trials) | Verdict |
+|---|---|---|---|
+| 6 Every call logged | 10 of 10 records, right `client` | 10/10 in all three | Met |
+| 7 Bad input fails properly | 5 of 5 | 2/5 in all three (empty, whitespace pass; number, list body, 5000 chars fail) | **Not met** |
+| 8 Parity with `run_agent()` | 3 of 3 queries | 3/3 in all three | Met |
+| 9 RUNNING.md alone is enough | 3 of 3 readers | not run yet: needs people | Open |
+| 10 Browser setup works from the steps | 3 of 3 fresh profiles | not run yet: needs fresh Chrome profiles | Open |
+
+Honest limits on the passes: criterion 6 wrote to a scratch log file, not the Render one, and calls the app in-process, so it shows the logging code is complete, not that the hosted instance's log works. Criterion 8 ran with the cache on, so the outfit and fit card text were identical to `run_agent()`'s because both read the same cached answers; only the item id and the price ceiling are independent evidence. It also called `/ask` directly, not the page's JavaScript `find_fit`, so the browser side of the contract is not covered.
+
+**Diagnosis of criterion 7:** three separate causes, all in `serve.py::_handle_ask`, which assumed the body was a JSON object with a string `query`. A number made `.strip()` raise `AttributeError: 'int' object has no attribute 'strip'`; a list body failed the same way on `payload.get`; both came back as an HTML 500 and were logged as `crash`. The 5,000-character query had no check at all, so it went through the whole agent (two model calls) and returned 200. The agent behaved correctly in each case; the server never looked at the input first.
 
 **The Improvement**
 
-_(Milestone 6)_
+**What I changed:** one function in `serve.py`, the start of `_handle_ask`. It now checks, in order, that the body is a JSON object, that `query` is a string, and that it is at most 500 characters (the same limit the log keeps), and returns a 400 with a plain-language message for each. Nothing else changed.
+
+**Which failure it was meant to fix:** the three criterion 7 misses above.
+
+**Before and after** (same script, three trials each):
+
+```
+Criterion 6 every call logged
+  trial 1: records 10/10, clients match: True  -> PASS
+  trial 2: records 10/10, clients match: True  -> PASS
+  trial 3: records 10/10, clients match: True  -> PASS
+  => 3/3 trials pass
+Criterion 7 bad input fails properly
+  trial 1: empty       http=400 json_error=True -> PASS
+  trial 1: whitespace  http=400 json_error=True -> PASS
+  trial 1: number      http=400 json_error=True -> PASS
+  trial 1: list body   http=400 json_error=True -> PASS
+  trial 1: 5000 chars  http=400 json_error=True -> PASS
+  trial 1: 5/5
+  trial 2: empty       http=400 json_error=True -> PASS
+  trial 2: whitespace  http=400 json_error=True -> PASS
+  trial 2: number      http=400 json_error=True -> PASS
+  trial 2: list body   http=400 json_error=True -> PASS
+  trial 2: 5000 chars  http=400 json_error=True -> PASS
+  trial 2: 5/5
+  trial 3: empty       http=400 json_error=True -> PASS
+  trial 3: whitespace  http=400 json_error=True -> PASS
+  trial 3: number      http=400 json_error=True -> PASS
+  trial 3: list body   http=400 json_error=True -> PASS
+  trial 3: 5000 chars  http=400 json_error=True -> PASS
+  trial 3: 5/5
+  => 3/3 trials pass
+Criterion 8 parity with run_agent
+  trial 1: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 1: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 1: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 2: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'vintage graphic tee under $30': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'black leather jacket under $80': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  trial 3: 'denim jacket under $60': http=200 item_id_match=True present=True price<=ceiling=True text_identical=True -> PASS
+  => 3/3 trials pass
+```
+
+| Criterion | Before | After |
+|---|---|---|
+| 6 Every call logged | 3/3 trials | 3/3 trials |
+| 7 Bad input | 2/5 each trial | 5/5 each trial |
+| 8 Parity | 3/3 trials | 3/3 trials |
+
+`python test.py` still passes after the change.
+
+**Did it help, and how do I know:** yes for these five inputs, and the cause matches the fix: each of the three now returns 400 with a JSON `error`, where before it returned 500 or 200. This is a check on cases I wrote after seeing the failure shape, so it shows these cases are handled, not that every bad input is. The 500-character limit is my choice and might refuse a legitimate long request; nothing I measured says what a real user's limit should be. The fix is committed but the hosted copy only has it after `git push` and a redeploy.
 
 **What's Still Broken**
 
-_(Milestone 7)_
+- Criteria 9 and 10 have not been run. They need a person following RUNNING.md and a Chrome profile that has never enabled the flag. I wrote RUNNING.md and I know the steps, so I can't be the test subject.
+- No end-to-end run of a real agent calling `find_fit` has succeeded. The Tool Inspector's chat step called Google's `gemini-3.6-flash` and returned HTTP 503. The trace showed the tool and its schema reached the model, so that part works. Execute Tool with a typed query is the only path I have exercised.
+- One local run took 39.7 s with the same two model calls and tokens as the 3 s runs. I never found out why, so I can't say whether it was a rate-limit pause, the MCP subprocess start or the network. The log records `wait_ms` and `duration_ms` but not time inside the model call, so it can't separate them.
+- `find_fit` returns finished prose, so the calling agent pays tokens for text it could have written itself. A smaller tool that returns only the search result would be cheaper and would leave the writing to the agent. Next idea: a B2B version where a distributor's site exposes order tools to buyers' agents, which also needs auth and confirmation steps this version does not have.
+- There is no auth on `/ask`, so anyone with the URL can spend my Gemini quota.
 
 **How I Used AI**
 
-_(Milestone 7)_
+_(Milestone 7: yours to write, with two specific moments.)_
 
 ---
 
