@@ -178,3 +178,5 @@ Open risks: WebMCP is an origin trial (Chrome 149+) / flag `chrome://flags/#enab
 | 14 | Latency breakdown (stretch) | 1 | Partial: per-step timings from one hosted run; not declared as a stretch |
 | 15 | Load observation (stretch) | 1 | Not done |
 | 16 | Both run paths (stretch) | 1 | Path A deployed on Render, Path B tested locally |
+
+Status 2026-11-21: complete. Criterion 7 fix confirmed on the live Render site (`{"query": 5}` returns a 400 JSON error). Open and stated in the README: criteria 9 and 10 not counted, no model has chosen `find_fit` on its own, no load test.

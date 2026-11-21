@@ -560,7 +560,7 @@ Criterion 8 parity with run_agent
 | 7 Bad input | 2/5 each trial | 5/5 each trial |
 | 8 Parity | 3/3 trials | 3/3 trials |
 
-`python test.py` still passes. The fix matches the cause, but I wrote these five cases after seeing how it failed, so it shows these cases are handled, not that every bad input is. The 500-character limit is my choice and might refuse a legitimate long request.
+`python test.py` still passes. I also checked it on the deployed site after the redeploy: `curl -X POST https://fitfindr-1vae.onrender.com/ask -H 'Content-Type: application/json' -d '{"query": 5}'` returned `{"error":"'query' must be a string, e.g. {\"query\": \"vintage graphic tee under $30\"}"}`, where before it would have been an HTML 500. The fix matches the cause, but I wrote these five cases after seeing how it failed, so it shows these cases are handled, not that every bad input is. The 500-character limit is my choice and might refuse a legitimate long request.
 
 **Second improvement (criterion 11).** After my first submission was scored, the feedback pointed at two flaws in my logging: `classify()` found the failure kind by searching the user-facing message for phrases, so rewording a message would silently log `no_results`; and the outer crash handler always logged an empty query. I wrote criterion 11 for them and ran it before changing anything: 3/5 in all three trials (`trials11_before.txt`):
 
