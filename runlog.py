@@ -40,14 +40,10 @@ import config
 LOG_PATH = Path(os.getenv("FITFINDR_LOG", config.ROOT / "logs" / "runs.jsonl"))
 _write_lock = threading.Lock()
 
-# Fragments of the messages run_agent() puts in session["error"]. The agent
-# is not changed for the capstone, so the kind of failure is read back from
-# its message.
-_ERROR_KINDS = (
-    ("model couldn't be reached", "model_unavailable"),
-    ("request budget", "quota_guard"),
-    ("over MCP", "mcp_error"),
-)
+# Failure kinds the agent names itself in session["error_kind"], set where it
+# catches the exception. Reading the kind from there, not from the wording of
+# the user-facing message, means rewording a message can't change the log.
+_KNOWN_KINDS = {"model_unavailable", "quota_guard", "mcp_error"}
 
 _LEVELS = {
     "ok": "INFO",
@@ -62,10 +58,9 @@ def classify(session: dict | None, failure: str | None) -> str:
         return "crash"
     if session is None or not session.get("error"):
         return "ok"
-    message = session["error"]
-    for fragment, kind in _ERROR_KINDS:
-        if fragment in message:
-            return kind
+    kind = session.get("error_kind")
+    if kind in _KNOWN_KINDS:
+        return kind
     return "no_results"
 
 

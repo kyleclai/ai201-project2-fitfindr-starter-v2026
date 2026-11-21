@@ -384,7 +384,7 @@ Shape C, extend one capability. The capability is "a browser agent can call FitF
 
 Out of scope, decided before building:
 - No second tool, and no moving `suggest_outfit` or `create_fit_card` onto MCP. Search stays the only MCP tool.
-- No change to the agent loop, the search matching, or the prompts. `run_agent()` is untouched.
+- No change to the agent loop, the search matching, or the prompts. (Later, one field was added to the session, `error_kind`: see the second improvement.)
 - No UI polish, auth, accounts, or non-Chrome WebMCP support. The page exists to carry the tool.
 
 **Running It**
@@ -495,8 +495,9 @@ Criterion 8 parity with run_agent
 | 6 Every call logged | 10 of 10 records, right `client` | 10/10 in all three | Met |
 | 7 Bad input fails properly | 5 of 5 | 2/5 in all three (empty, whitespace pass; number, list body, 5000 chars fail) | **Not met** |
 | 8 Parity with `run_agent()` | 3 of 3 queries | 3/3 in all three | Met |
+| 11 Failure kinds logged accurately, with their input | 5 of 5 | 3/5 in all three (crash record kept an empty query; a reworded message was logged as `no_results`) | **Not met** |
 | 9 RUNNING.md alone is enough | 3 of 3 readers | Not measured: no timed attempts. Informally, peers who opened the hosted site and tried the WebMCP setup got results; no one started it locally from RUNNING.md | **Not verified** |
-| 10 Browser setup works from the steps | 3 of 3 fresh profiles | Informal: peers who set up Chrome, the flag and the extension saw the page say the tool was registered and everything worked; I did not count attempts or profiles | **Likely met, not counted** |
+| 10 Browser setup works from the steps | 3 of 3 fresh profiles | Informal (plus 5 real Execute Tool calls through the extension on Render, below): peers who set up Chrome, the flag and the extension saw the page say the tool was registered and everything worked; I did not count attempts or profiles | **Likely met, not counted** |
 
 Honest limits on the passes: criterion 6 wrote to a scratch log file, not the Render one, and calls the app in-process, so it shows the logging code is complete, not that the hosted instance's log works. Criterion 8 ran with the cache on, so the outfit and fit card text were identical to `run_agent()`'s because both read the same cached answers; only the item id and the price ceiling are independent evidence. It also called `/ask` directly, not the page's JavaScript `find_fit`, so the browser side of the contract is not covered.
 
@@ -511,6 +512,56 @@ Honest limits on the passes: criterion 6 wrote to a scratch log file, not the Re
 - **Where the time went (first run, 18.9 s, from the log lines):** parse 0 s; `search_listings` over MCP 10.2 s; `suggest_outfit` 8.0 s; `create_fit_card` 0.7 s. The second and third runs had 2 cache hits and 0 model calls, and still took 4.3 s and 4.8 s, so about that long is the search step on its own, starting the MCP subprocess. Locally the whole request has a 3.6 s median. This points at the MCP subprocess start as a large and variable cost on the free instance, and so as a lead on the 39.7 s outlier. It is only a lead: that outlier was on my laptop, and I did not time the steps there.
 
 **Diagnosis of criterion 7:** three separate causes, all in `serve.py::_handle_ask`, which assumed the body was a JSON object with a string `query`. A number made `.strip()` raise `AttributeError: 'int' object has no attribute 'strip'`; a list body failed the same way on `payload.get`; both came back as an HTML 500 and were logged as `crash`. The 5,000-character query had no check at all, so it went through the whole agent (two model calls) and returned 200. The agent behaved correctly in each case; the server never looked at the input first.
+
+**Criterion 11 (added after the first submission was scored).** The grader's feedback named two flaws in my logging: `classify()` found the failure kind by searching the user-facing message for phrases, so rewording a message would silently log `no_results`; and the outer crash handler always logged `query=""`. I wrote criterion 11 for them before running anything (commit `add capstone criterion 11`), then ran it: 3/5 in all three trials (`trials11_before.txt`):
+
+```
+Criterion 11 failure kinds logged accurately
+  trial 1: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 1: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 1: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 1: crash in handler   want=crash got=crash query_kept=False -> FAIL
+  trial 1: reworded message  want=model_unavailable got=no_results -> FAIL
+  trial 1: 3/5
+  trial 2: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 2: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 2: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 2: crash in handler   want=crash got=crash query_kept=False -> FAIL
+  trial 2: reworded message  want=model_unavailable got=no_results -> FAIL
+  trial 2: 3/5
+  trial 3: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 3: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 3: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 3: crash in handler   want=crash got=crash query_kept=False -> FAIL
+```
+
+**Diagnosis:** both flaws are where the fact is known versus where it is recorded. `run_agent()` already knows which exception it caught (`ModelUnavailable`, `QuotaGuard`, `MCPError`) when it writes the message, and throws that away; `serve.ask()` set `query = ""` before `_handle_ask` had parsed it.
+
+**What I changed (second improvement):** `run_agent()` now also sets `session["error_kind"]` in the three handlers (the starter says to add fields if needed; this adds one and changes no behaviour); `runlog.classify()` reads that field and no longer searches message text; and `_handle_ask` stores the query on `flask.g` as soon as it is read so the crash record keeps it. After (`trials11_after.txt`):
+
+```
+Criterion 11 failure kinds logged accurately
+  trial 1: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 1: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 1: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 1: crash in handler   want=crash got=crash query_kept=True -> PASS
+  trial 1: reworded message  want=model_unavailable got=model_unavailable -> PASS
+  trial 1: 5/5
+  trial 2: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 2: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 2: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 2: crash in handler   want=crash got=crash query_kept=True -> PASS
+  trial 2: reworded message  want=model_unavailable got=model_unavailable -> PASS
+  trial 2: 5/5
+  trial 3: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 3: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 3: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 3: crash in handler   want=crash got=crash query_kept=True -> PASS
+```
+
+Criteria 6, 7 and 8 re-ran unchanged at 3/3, 5/5 and 3/3 and `python test.py` still passes. Limits: the four failures are forced by swapping a function for one that raises (the model, the MCP call, `classify()`), not triggered by a real outage, and the reworded-message check calls `classify()` directly rather than rewording the agent's text. The hosted copy has this change only after a push and redeploy. Note this makes the first improvement's before/after table above one of two: the first was aimed at criterion 7, this one at criterion 11.
+
+**Is the central claim verified?** The grader said the claim "a browser agent can call `find_fit`" had only been checked against a jsdom stub and a hand-set curl header. Since then the tool has been called through the real Model Context Tool Inspector extension in Chrome against the deployed page: five Execute Tool calls on Render, each producing a `client: "webmcp"` record (`logs/render_runlog.jsonl`) and a result in the extension. That checks the page-to-tool-to-`/ask` path in a real browser. It does not check a model choosing the tool by itself: the chat step failed with Google's 503, so no agent has decided on its own to call `find_fit`.
 
 **The Improvement**
 

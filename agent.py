@@ -47,6 +47,7 @@ def new_session(query: str, wardrobe: dict) -> dict:
         "outfit_suggestion": None,   # what suggest_outfit returned
         "fit_card": None,            # what create_fit_card returned
         "error": None,               # set when the run ended early
+        "error_kind": None,          # which exception ended it (model_unavailable, quota_guard, mcp_error); read by runlog.py
     }
 
 
@@ -156,6 +157,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
                                   f"outfit={len(session['outfit_suggestion'])} chars",
                            returned=session["fit_card"])
     except ModelUnavailable:
+        session["error_kind"] = "model_unavailable"
         session["error"] = (
             "The model couldn't be reached, so I couldn't write the outfit or the "
             "fit card. Check that GEMINI_API_KEY in your .env is correct and that "
@@ -163,6 +165,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         )
         trace.step("model unavailable", note=session["error"])
     except QuotaGuard:
+        session["error_kind"] = "quota_guard"
         session["error"] = (
             "This session hit its request budget, so I stopped before using up "
             "your allowance. Wait a minute and try again, or raise "
@@ -170,6 +173,7 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         )
         trace.step("quota guard", note=session["error"])
     except MCPError as exc:
+        session["error_kind"] = "mcp_error"
         session["error"] = (
             "The search tool couldn't be reached over MCP, so I have no listings "
             "to look at. Check that `python mcp_server.py` starts on its own, "

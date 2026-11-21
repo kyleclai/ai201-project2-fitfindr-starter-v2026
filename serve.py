@@ -41,7 +41,7 @@ import time
 # and fixes the Windows console encoding for every module that imports it.
 import config  # noqa: F401
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, g, jsonify, request, send_from_directory
 
 import generate
 import runlog
@@ -122,11 +122,11 @@ def ask():
     started = time.perf_counter()
     client = request.headers.get("X-Client", "other")
     client = client if client in ("form", "webmcp") else "other"
-    query = ""
+    g.query = ""  # _handle_ask fills this in as soon as it knows the query
     try:
         return _handle_ask(started, client)
-    except Exception as exc:  # noqa: BLE001 — the parse itself failed: log it, then re-raise
-        runlog.write(client=client, status="crash", http_status=500, query=query,
+    except Exception as exc:  # noqa: BLE001 — log it with the input that caused it, then re-raise
+        runlog.write(client=client, status="crash", http_status=500, query=g.query,
                      output={"error": f"{type(exc).__name__}: {exc}"},
                      duration_ms=(time.perf_counter() - started) * 1000, wait_ms=0)
         raise
@@ -154,6 +154,7 @@ def _handle_ask(started: float, client: str):
         return reject("'query' must be a string, e.g. "
                       '{"query": "vintage graphic tee under $30"}')
     query = raw_query.strip()
+    g.query = query
     if len(query) > MAX_QUERY_CHARS:
         query = query[:MAX_QUERY_CHARS]  # keep the log record small
         return reject(f"'query' is too long (limit {MAX_QUERY_CHARS} characters). "
