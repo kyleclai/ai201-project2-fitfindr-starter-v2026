@@ -97,3 +97,55 @@ I care about this one because a thrift search that shows a $55 item for "under $
      A number you missed stays where it is, gets diagnosed, and gets a fix
      attempted. That's where the points are.
      ───────────────────────────────────────────────────────────────────────── -->
+
+---
+
+# Capstone criteria
+
+Written in unit 9, **before any capstone trial was run**. These are about the part
+I added: the web page, the WebMCP tool `find_fit`, the run log, and the run
+path. The unit 3 criteria above still describe the agent underneath.
+
+Latency note: I am not setting a latency criterion. The hosted instance sleeps
+after about 15 idle minutes and takes about a minute to wake, so any single
+number would have to say "warm" or "cold", and I would only ever use it warm.
+The warm median (about 3.6 s over 10 runs) is measured and reported in the README
+as a measurement, not as a pass/fail target.
+
+## 6. Every call that reaches FitFindr is logged
+
+Across 10 calls (a mix of form submissions, `find_fit` calls from the WebMCP tool
+and deliberately bad ones), `logs/runs.jsonl` gains exactly 10 records, and each
+record's `client` field matches how the call was made (`form`, `webmcp`, `other`).
+Zero calls missing.
+
+**Why this target:**
+The log is how I can prove that a request typed into the WebMCP extension actually reached my project and was not lost somewhere between the browser and the server. If even one call can go missing, I cannot trust the log for any of the other criteria, so the target is zero missing and not a percentage. It is a plain file write, so there is no network luck to allow for.
+
+## 7. Every bad input to the tool fails properly, with a readable error
+
+For 5 bad inputs (an empty query, a whitespace-only query, a number where the query should be a string, a JSON body that is a list instead of an object, and a 5,000-character query), each returns JSON with an `error` message in plain language and a 4xx status, never an HTML error page and never a 500. Each also leaves a log record whose `status` says what went wrong. Target: 5 of 5.
+
+**Why this target:**
+When something fails, a stack trace or an HTML page in the log is hard to read and hard to debug. Wrapping each failure into a short human-readable message makes it quick to see what the caller did wrong. These are all inputs I can construct on purpose, so there is no randomness to allow for, and a miss means a branch I did not handle. I already expect the list-body case to miss, which is part of why it is on the list.
+
+## 8. The tool does what the original FitFindr does
+
+For 3 queries, calling `find_fit` through the page returns `ok: true` with an item, an outfit and a fit card, and the result matches what `run_agent()` returns for the same query: same item id, and the item respects the price ceiling in the query. Target: 3 of 3.
+
+**Why this target:**
+This is the core of the extension. The tool the website offers has to actually work, and it has to give the same answer as the original FitFindr, otherwise the WebMCP layer is changing the product instead of exposing it. Item choice is deterministic code, so the item id must match exactly. The outfit and fit card text come from the model, so I compare those only for being present and non-empty unless the cache makes them identical.
+
+## 9. RUNNING.md alone is enough to use it and to start it
+
+A reader who has only RUNNING.md can (a) say in one sentence what WebMCP is, from its short explainer, (b) get a result from the hosted URL, and (c) start the project themselves from a clean clone for when the hosted copy is down. Target: 3 of 3 attempts, no questions asked of me.
+
+**Why this target:**
+My peers will mostly open the Render site and start trying things, and the Render copy will not stay up forever. RUNNING.md has to carry both jobs: explain the interesting part (WebMCP) in practical terms, and give the steps to run it locally. I tested the clean clone once already and it exposed a real problem (macOS port 5000), so I do not trust it to work without a check.
+
+## 10. The browser setup for WebMCP works from the written steps
+
+On a Chrome profile that has never had the flag set, following only the browser setup steps in RUNNING.md (Chrome version, the `chrome://flags/#enable-webmcp-testing` flag, the Model Context Tool Inspector extension), the page's status line reads "tool find_fit registered", the Inspector lists `find_fit`, and Execute Tool with `{"query": "vintage graphic tee under $30"}` returns `ok: true`. Target: 3 of 3 fresh-profile attempts.
+
+**Why this target:**
+WebMCP is experimental, so the browser setup is part of the product, not a side detail: every test of this idea needs it. If the steps are wrong or incomplete, nobody can reach the feature at all. The tool call goes through the Inspector's Execute Tool path, not through its Gemini chat box, because the chat step depends on a Google model that returned 503 for me and is outside my project.
