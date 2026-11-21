@@ -47,7 +47,7 @@ If it shows a 503, that is Google being overloaded, not FitFindr. Use Execute To
 | Model files  | none. The model is Gemini over the API, so no local weights, no GPU, well under 512 MB of RAM                                            |
 | Secret       | a `GEMINI_API_KEY` in `.env` (copy `.env.example`)                                                                                       |
 | Browser      | any browser for the form. To see the WebMCP tool: Chrome 149+ with `chrome://flags/#enable-webmcp-testing` set to Enabled, then relaunch |
-![[Pasted image 20261121083429.png]]
+![FitFindr overview: a website that offers tools to an AI agent through WebMCP, with one real run (710 tokens, 2 model calls, 3.6 s median)](images/overview-webmcp.png)
 ## Start it (clean checkout)
 
 ```bash

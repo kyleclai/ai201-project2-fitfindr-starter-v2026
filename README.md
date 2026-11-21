@@ -393,7 +393,7 @@ Path B: local, started with `python serve.py`, with a committed run record in `l
 
 **Architecture**
 
-![[Pasted image 20261121083759.png]]
+![FitFindr capstone architecture: callers, the new front door (page + WebMCP tool + serve.py), the unchanged agent, services, and the run log](images/architecture-capstone.png)
 
 **Instrumentation**
 
