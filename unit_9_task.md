@@ -160,3 +160,21 @@ Open risks: WebMCP is an origin trial (Chrome 149+) / flag `chrome://flags/#enab
 | 2026-11-18 | Pre-M1 | Read L9 slides into tracker; researched WebMCP; drafted Shape C candidate | — |
 | 2026-11-18 | M2 | `static/index.html` (form + WebMCP `find_fit` registration, feature-detects `document.modelContext` then `navigator.modelContext`); `GET /` in `serve.py`. Page JS checked against a jsdom stub, NOT real Chrome. | see git log |
 | 2026-11-18 | M3 | `runlog.py` JSONL log on every `/ask`; `measure_cost.py`; `RUNNING.md` capstone section; `render.yaml`; README Running It / Instrumentation / What It Costs. Clean-clone run failed first on macOS port 5000 (AirPlay) → documented `PORT=5001`. Measured: 710 tokens, 2 model calls, median 3.6 s (one 39.7 s outlier, undiagnosed) per run. Found: non-object JSON body → HTML 500. | see git log |
+
+## Rubric audit (2026-11-21, against the scored first submission: 25/60)
+
+| # | Item | Pts | Now |
+|---|---|---|---|
+| 1 | Required evidence, ≥8 commits, How I Used AI | 4 | Done: 20+ capstone commits, How I Used AI written |
+| 2–4 | Criteria carry targets, testable, reasons | 15 | Done (criteria 6–11 in criteria.md) |
+| 5 | Criteria about the extension | 3 | Done (6–11); 9 and 10 only informally measured |
+| 6–7 | README describes it, runs observable | 8 | Done, plus hosted RUNLOG records |
+| 8 | Runs actually happened | 5 | Done: trials.py, before/after files, criteria committed first |
+| 9 | Verdicts right | 6 | Done; 9 "not verified", 10 "likely met, not counted" stated plainly |
+| 10 | Every miss diagnosed | 7 | 7, 11, multi-item diagnosed; 39.7 s outlier still only a lead |
+| 11 | Improvement follows diagnosis, measured | 6 | Done (criterion 7: 2/5 → 5/5) |
+| 12 | Cost and what's left | 6 | Done |
+| 13 | Second measured improvement (stretch) | 2 | Done (criterion 11: 3/5 → 5/5) |
+| 14 | Latency breakdown (stretch) | 1 | Partial: per-step timings from one hosted run; not declared as a stretch |
+| 15 | Load observation (stretch) | 1 | Not done |
+| 16 | Both run paths (stretch) | 1 | Path A deployed on Render, Path B tested locally |
