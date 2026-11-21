@@ -67,8 +67,48 @@ def crit8(t):
         print(f"  trial {t}: {q!r}: http={r.status_code} item_id_match={same_id} present={present} price<=ceiling={under} text_identical={same_text} -> {'PASS' if ok else 'FAIL'}")
     return ok_all
 
+def crit11(t):
+    """Force each failure kind; the log record must name it and keep the query."""
+    import agent, tools
+    from generate import ModelUnavailable, QuotaGuard
+    from mcp_client import MCPError
+    q = "vintage graphic tee under $30"
+    def forced(label, want, patch):
+        before = len(records())
+        undo = patch()
+        try:
+            post({"query": q}, "webmcp")
+        finally:
+            undo()
+        new = records()[before:]
+        rec = new[-1] if new else {}
+        ok = len(new) == 1 and rec.get("status") == want and rec.get("input", {}).get("query") == q
+        print(f"  trial {t}: {label:18s} want={want} got={rec.get('status')} query_kept={rec.get('input', {}).get('query') == q} -> {'PASS' if ok else 'FAIL'}")
+        return ok
+    def raising(module, name, exc):
+        def patch():
+            orig = getattr(module, name)
+            def boom(*a, **k): raise exc
+            setattr(module, name, boom)
+            return lambda: setattr(module, name, orig)
+        return patch
+    results = [
+        forced("model unreachable", "model_unavailable", raising(tools, "generate", ModelUnavailable("x"))),
+        forced("budget hit", "quota_guard", raising(tools, "generate", QuotaGuard("x"))),
+        forced("MCP down", "mcp_error", raising(agent, "call_tool", MCPError("x"))),
+        forced("crash in handler", "crash", raising(serve.runlog, "classify", RuntimeError("x"))),
+    ]
+    # Fifth check: same failure, different wording. The status must not depend on it.
+    sess = {"error": "Totally different wording than before.", "error_kind": "model_unavailable"}
+    got = serve.runlog.classify(sess, None)
+    ok5 = got == "model_unavailable"
+    print(f"  trial {t}: reworded message  want=model_unavailable got={got} -> {'PASS' if ok5 else 'FAIL'}")
+    results.append(ok5)
+    print(f"  trial {t}: {sum(results)}/5")
+    return all(results)
+
 if __name__ == "__main__":
-    for name, fn in (("6 every call logged", crit6), ("7 bad input fails properly", crit7), ("8 parity with run_agent", crit8)):
+    for name, fn in (("6 every call logged", crit6), ("7 bad input fails properly", crit7), ("8 parity with run_agent", crit8), ("11 failure kinds logged accurately", crit11)):
         print(f"\nCriterion {name}")
         res = [fn(t) for t in (1, 2, 3)]
         print(f"  => {sum(res)}/3 trials pass")

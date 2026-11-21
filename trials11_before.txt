@@ -1,0 +1,17 @@
+Criterion 11 failure kinds logged accurately
+  trial 1: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 1: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 1: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 1: crash in handler   want=crash got=crash query_kept=False -> FAIL
+  trial 1: reworded message  want=model_unavailable got=no_results -> FAIL
+  trial 1: 3/5
+  trial 2: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 2: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 2: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 2: crash in handler   want=crash got=crash query_kept=False -> FAIL
+  trial 2: reworded message  want=model_unavailable got=no_results -> FAIL
+  trial 2: 3/5
+  trial 3: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 3: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 3: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 3: crash in handler   want=crash got=crash query_kept=False -> FAIL
