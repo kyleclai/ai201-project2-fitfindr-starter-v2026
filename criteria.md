@@ -149,3 +149,12 @@ On a Chrome profile that has never had the flag set, following only the browser 
 
 **Why this target:**
 WebMCP is experimental, so the browser setup is part of the product, not a side detail: every test of this idea needs it. If the steps are wrong or incomplete, nobody can reach the feature at all. The tool call goes through the Inspector's Execute Tool path, not through its Gemini chat box, because the chat step depends on a Google model that returned 503 for me and is outside my project.
+
+## 11. Every kind of failure is logged as what it was, with the input that caused it
+
+*(Added after the first capstone submission was scored; written before the trial for it was run. Draft by Claude from the grader's feedback: review it.)*
+
+I force four failures on purpose: the model unreachable, the request budget hit, the MCP search server down, and an unexpected crash inside the request handler. For each, the record in the run log must have the right `status` (`model_unavailable`, `quota_guard`, `mcp_error`, `crash`) and `input.query` equal to the query that was sent. A fifth check rewords the error message the agent shows the user and confirms the logged status does not change. Target: 5 of 5.
+
+**Why this target:**
+The log is only useful for debugging if it says what failed and what was asked. The status is a plain value I can force on purpose, so there is no luck involved and the target is all five. Today `runlog.classify()` finds the failure kind by searching for phrases in the human-readable message, so rewording a message would silently turn `model_unavailable` into `no_results`, and the outer crash handler always logs an empty query. Those are the two things this criterion is aimed at.
