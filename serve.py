@@ -92,6 +92,10 @@ app = Flask(__name__)
 
 _one_at_a_time = threading.Lock()
 
+# A request is one item described in a sentence. The run log keeps the first
+# 500 characters of the input, so anything longer is refused up front.
+MAX_QUERY_CHARS = 500
+
 
 @app.get("/")
 def index():
@@ -129,14 +133,31 @@ def ask():
 
 
 def _handle_ask(started: float, client: str):
-    payload = request.get_json(silent=True) or {}
-    query = (payload.get("query") or "").strip()
+    payload = request.get_json(silent=True)
+    query = ""
 
     def reject(message: str, status: int = 400):
         runlog.write(client=client, status="bad_request", http_status=status, query=query,
                      output={"error": message},
                      duration_ms=(time.perf_counter() - started) * 1000, wait_ms=0)
         return jsonify({"error": message}), status
+
+    # Check the shape before reading anything out of it: a list, a number or a
+    # string body used to reach payload.get() and crash with an HTML 500.
+    if payload is None:
+        payload = {}
+    if not isinstance(payload, dict):
+        return reject("The request body must be a JSON object, e.g. "
+                      '{"query": "vintage graphic tee under $30"}')
+    raw_query = payload.get("query") or ""
+    if not isinstance(raw_query, str):
+        return reject("'query' must be a string, e.g. "
+                      '{"query": "vintage graphic tee under $30"}')
+    query = raw_query.strip()
+    if len(query) > MAX_QUERY_CHARS:
+        query = query[:MAX_QUERY_CHARS]  # keep the log record small
+        return reject(f"'query' is too long (limit {MAX_QUERY_CHARS} characters). "
+                      "Describe one item, e.g. 'vintage graphic tee under $30'.")
 
     if not query:
         # 400 rather than a stack trace: the caller can act on this one.
