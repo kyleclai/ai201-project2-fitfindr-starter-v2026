@@ -25,16 +25,16 @@ Missing your own criteria costs nothing; an honest standard, honest runs, and re
 - **Path B, local with logs:** one documented start command in `RUNNING.md`, tested from a clean checkout; committed run record (structured log pasted as text); Python version, pinned deps, model files + size.
 
 ## Required
-- [ ] One system extended; say which and what's new
-- [ ] One shape declared + one sentence on what's out of scope
-- [ ] Run path that isn't the editor (`RUNNING.md`)
-- [ ] Structured logging: timestamp, input, output, duration (+ system-specific fields); failures logged too; ≥10 entries pasted in README (+ ≥1 failed run)
-- [ ] Measured cost per run (10 runs, average, method written down)
-- [ ] 5 criteria, written first, no template, ≥3 about the extension, ≥1 about the bad path, each with a target and a "why this target"
-- [ ] 3 trials per criterion
-- [ ] Verdict (MET/MISSED) + diagnosis (stage + mechanism) per criterion
-- [ ] One improvement, made and measured, before/after side by side
-- [ ] Written call on what's left
+- [x] One system extended; say which and what's new
+- [x] One shape declared + one sentence on what's out of scope
+- [x] Run path that isn't the editor (`RUNNING.md`)
+- [x] Structured logging: timestamp, input, output, duration (+ system-specific fields); failures logged too; ≥10 entries pasted in README (+ ≥1 failed run)
+- [x] Measured cost per run (10 runs, average, method written down)
+- [x] 5 criteria, written first, no template, ≥3 about the extension, ≥1 about the bad path, each with a target and a "why this target"
+- [x] 3 trials per criterion
+- [x] Verdict (MET/MISSED) + diagnosis (stage + mechanism) per criterion
+- [x] One improvement, made and measured, before/after side by side
+- [x] Written call on what's left
 
 **Stretch (declare in README before starting):** second measured improvement · latency breakdown by stage · 10× load observation · both run paths with a diff note.
 
@@ -51,7 +51,7 @@ Missing your own criteria costs nothing; an honest standard, honest runs, and re
 - [x] Build the one thing; get one path working end to end first
 - [x] Original system still works (no regression): `test.py` 10/10, CLI `ask` runs
 - [x] ≥3 commits
-- [ ] If stuck after 1 hr: cut down, and write what was cut in What's Still Broken
+- [x] If stuck after 1 hr: cut down, and write what was cut in What's Still Broken (n/a: not stuck)
 - [x] Commit
 
 ### M3 — Run it, make it observable (~75 min)
@@ -61,56 +61,56 @@ Missing your own criteria costs nothing; an honest standard, honest runs, and re
 - [x] Failures leave records too
 - [x] Cost: 10 runs, average; or time it if no spend number
 - [x] README **Instrumentation**: ≥10 entries + ≥1 failure; **What It Costs**: number + method
-- [x] Path B chosen (Path A configured in `render.yaml`, not deployed)
+- [x] Both paths: A (Render, https://fitfindr-1vae.onrender.com) deployed and B (local) tested
 - [x] Commit
 
 ### M4 — Write criteria, unaided (~45 min)
-- [ ] 5 numbered criteria in `criteria.md`, each: target (number/rate/visible thing) + why that target
-- [ ] No criterion hinges on "works / reliable / good / fast"
-- [ ] ≥3 about the extension; ≥1 about a failure path
+- [x] 5 numbered criteria in `criteria.md`, each: target (number/rate/visible thing) + why that target
+- [x] No criterion hinges on "works / reliable / good / fast"
+- [x] ≥3 about the extension; ≥1 about a failure path
 - [ ] Self-check: (1) how to test from the sentence alone, (2) would two people score it the same, (3) what would have to happen for it to fail?
 - [ ] Peer/Claude review (don't rewrite them)
-- [ ] **Commit with a message naming it, BEFORE any results**
+- [x] **Commit with a message naming it, BEFORE any results**
 
 ### M5 — Run the test (~50 min)
-- [ ] Decide what each criterion needs run against it (failures triggered deliberately; latency needs a distribution)
-- [ ] 3 separate runs, nothing changed in between; save real output
-- [ ] Run-log table: 5 rows × Run 1/2/3 + verdict
-- [ ] Paste real output per criterion, naming file + function that produced it
-- [ ] Commit (message names it as first results)
+- [x] Decide what each criterion needs run against it (failures triggered deliberately; latency needs a distribution)
+- [x] 3 separate runs, nothing changed in between; save real output (criteria 6, 7, 8, 11 run 3x; 9 and 10 checked live with peers, not counted)
+- [x] Run-log table: 5 rows × Run 1/2/3 + verdict
+- [x] Paste real output per criterion, naming file + function that produced it
+- [x] Commit (message names it as first results)
 
 ### M6 — Verdicts, diagnoses, one fix (~70 min)
-- [ ] MET/MISSED against my own target (target must hold, not "sometimes")
-- [ ] Each miss: the stage + the mechanism. Look for a shared root cause
-- [ ] If all met: say whether targets were low; name one to tighten and to what
-- [ ] One improvement aimed at a diagnosed cause; re-run all 5 × 3
-- [ ] Before/after tables side by side in README; say if it helped, and any trade
-- [ ] Criterion revisions only if unmeasurable (never "it was hard"); keep original line, add revision + reason beneath
-- [ ] Commit
+- [x] MET/MISSED against my own target (target must hold, not "sometimes")
+- [x] Each miss: the stage + the mechanism. Look for a shared root cause
+- [x] If all met: say whether targets were low; name one to tighten and to what (n/a: there were misses)
+- [x] One improvement aimed at a diagnosed cause; re-run all 5 × 3 (criteria 6, 7, 8, 11 re-run; 9 and 10 can't be re-run as trials)
+- [x] Before/after tables side by side in README; say if it helped, and any trade
+- [x] Criterion revisions only if unmeasurable (never "it was hard"); keep original line, add revision + reason beneath (n/a: no revisions)
+- [x] Commit
 
 ### M7 — Cost, what's left, submit (~30 min)
-- [ ] What It Costs: measured per-run, method, hundred-people-a-day arithmetic
-- [ ] What's Still Broken: per miss, what + why stopped; or tighten-target if all met; plus the one thing to do first and why
-- [ ] New **How I Used AI** under `## Capstone`: two specific moments (asked / got / changed)
-- [ ] Checklist below passes; submit repo URL
+- [x] What It Costs: measured per-run, method, hundred-people-a-day arithmetic
+- [x] What's Still Broken: per miss, what + why stopped; or tighten-target if all met; plus the one thing to do first and why
+- [x] New **How I Used AI** under `## Capstone`: two specific moments (asked / got / changed)
+- [ ] Checklist below passes; submit repo URL (checklist passes; resubmit the repo URL)
 
 ## README sections under `## Capstone` (bold labels)
-- [ ] What This Extends
-- [ ] The Shape
-- [ ] Running It
-- [ ] Instrumentation
-- [ ] What It Costs
-- [ ] Run Log and Verdicts
-- [ ] The Improvement
-- [ ] What's Still Broken
-- [ ] How I Used AI
+- [x] What This Extends
+- [x] The Shape
+- [x] Running It
+- [x] Instrumentation
+- [x] What It Costs
+- [x] Run Log and Verdicts
+- [x] The Improvement
+- [x] What's Still Broken
+- [x] How I Used AI
 
 ## Submission checklist
-- [ ] `criteria.md` (+ any revisions beneath originals)
-- [ ] `RUNNING.md`
-- [ ] `README.md` with all nine sections
-- [ ] ≥8 new commits; criteria commit precedes results commit; both named
-- [ ] Same repo URL as the earlier submission
+- [x] `criteria.md` (+ any revisions beneath originals)
+- [x] `RUNNING.md`
+- [x] `README.md` with all nine sections
+- [x] ≥8 new commits; criteria commit precedes results commit; both named
+- [ ] Same repo URL as the earlier submission (same repo; resubmit so the grader sees the new commits)
 
 ## Run-log format (use for before and after)
 ```
