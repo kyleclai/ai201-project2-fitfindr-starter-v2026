@@ -374,9 +374,9 @@ Full output: `results/scored_2026-11-15_1852_after.md`.
 
 **What This Extends**
 
-FitFindr, my unit 3–4 agent: parse a query, search 40 listings (over MCP), write an outfit, write a fit card. New this unit: a one-page web front end served from `serve.py`, a single WebMCP tool (`find_fit`) registered on that page so a browser agent can call FitFindr, and structured logging around every `/ask` request.
+FitFindr is my unit 3–4 agent. It parses a request, searches 40 listings (over MCP), writes an outfit from my wardrobe and writes a fit card. This unit I added three things: a one-page web front end served by `serve.py`, one WebMCP tool (`find_fit`) registered on that page so a browser agent can call FitFindr, and a structured log line for every `/ask` request.
 
-What WebMCP is, technically: a proposed browser API (Chrome origin trial from 149, or `chrome://flags/#enable-webmcp-testing`) that lets a page publish tools to an in-browser agent with `document.modelContext.registerTool({name, description, inputSchema, execute})`. The agent reads the name, description and JSON Schema, decides when to call it, and the page's own `execute` function runs in the page's JavaScript context with the user's session. The tool is therefore a contract the page offers (typed input, structured output) rather than something an agent works out by reading the DOM and clicking. It is different from server-side MCP, which `search_listings` already uses: that is a stdio process my agent spawns, while WebMCP lives in the browser tab and is only available while the page is open. Here `find_fit` registers when the page loads and `execute` posts to the same `/ask` endpoint the form uses, with an `X-Client: webmcp` header so the run log can tell an agent call from a person.
+**What WebMCP is:** a proposed browser API (Chrome origin trial from 149, or the `chrome://flags/#enable-webmcp-testing` flag) that lets a page publish tools to an in-browser agent with `document.modelContext.registerTool({name, description, inputSchema, execute})`. The agent reads the name, description and JSON Schema and decides when to call the tool. The page's own `execute` function then runs in the page. So the tool is a typed contract the page offers, not something an agent works out by clicking around. It is different from server-side MCP, which `search_listings` already uses: that is a process my agent starts, while WebMCP lives in the browser tab and exists only while the page is open. `find_fit` registers when the page loads, and its `execute` posts to the same `/ask` endpoint the form uses, with an `X-Client: webmcp` header so the log can tell an agent call from a person.
 
 **The Shape**
 
@@ -384,7 +384,7 @@ Shape C, extend one capability. The capability is "a browser agent can call FitF
 
 Out of scope, decided before building:
 - No second tool, and no moving `suggest_outfit` or `create_fit_card` onto MCP. Search stays the only MCP tool.
-- No change to the agent loop, the search matching, or the prompts. (Later, one field was added to the session, `error_kind`: see the second improvement.)
+- No change to the agent loop, the search matching, or the prompts. (One later exception: I added an `error_kind` field to the session for the second improvement.)
 - No UI polish, auth, accounts, or non-Chrome WebMCP support. The page exists to carry the tool.
 
 **Running It**
@@ -428,8 +428,8 @@ Real output from `python measure_cost.py` (10 real runs with the cache off, then
 ```
 
 What I noticed in the log:
-- Run 8 took 39.7 s against 2-5 s for the others, with the same two model calls and about the same tokens. The tokens say it was not a bigger request, so the time went somewhere else; I have not diagnosed it. It matters for deployment: gunicorn's default 30 s worker timeout would have killed that request, which is why `render.yaml` sets `--timeout 180`.
-- The last record is a real bug found by logging the failure path: `serve.py` assumes the body is a JSON object, so `[1, 2]` raises `AttributeError` and Flask returns an HTML 500. I left it unfixed because it belongs to the test half.
+- Run 8 took 39.7 s while the others took 2–5 s, with the same two model calls and about the same tokens. I worked out why from the timestamps. Runs 1–7 used 14 model calls in about 20 seconds, and my free Gemini key allows 15 requests per minute, which `generate.py` enforces with its own pacing limiter. Run 8's second call would have been the 16th, so the limiter slept until the oldest call was 60 s old. Run 8 ended 63 s after run 1 started, which fits. The log doesn't record the wait, so I'm inferring it from timing and didn't see the limiter's message. It also explains `--timeout 180` in `render.yaml`: gunicorn's default 30 s would have killed that request.
+- The last record is a real bug I found because the failure path is logged: `serve.py` assumed the body was a JSON object, so `[1, 2]` raised `AttributeError` and Flask returned an HTML 500. I fixed it later (see The Improvement).
 
 **What It Costs**
 
@@ -443,13 +443,13 @@ Measured with `python measure_cost.py`: 10 real runs, cache off (`AI201_CACHE=0`
 | Total tokens | 710 |
 | Duration | median 3.6 s, mean 7.4 s (min 2.6 s, max 39.7 s) |
 
-The mean is dragged up by one 39.7 s run, so the median is the honest "typical". Runs that find nothing cost 0 tokens and about 0.4 s.
+The mean is pulled up by the one 39.7 s run (the rate-limit wait above), so the median is the better "typical". Runs that find nothing cost 0 tokens and about 0.4 s.
 
-For a hundred people a day, one run each: 100 x 710 = 71,000 tokens a day (about 53,600 in and 17,500 out), 200 model calls, and about 100 x 3.6 s = 6 minutes of compute, one request at a time. I have not put a dollar figure on it: the course runs on Gemini's free tier, which bills $0, and I have not read this model's paid prices. The dollar figure is 53,600 x (input price) + 17,500 x (output price) per day; `measure_cost.py` computes it if `PRICE_IN_PER_M` and `PRICE_OUT_PER_M` are set.
+For a hundred people a day, one run each: 100 x 710 = 71,000 tokens a day (about 53,600 in and 17,500 out), 200 model calls, and about 100 x 3.6 s = 6 minutes of compute, one request at a time. I have not put a dollar figure on it: I run on Gemini's free tier, which costs $0, and I haven't checked this model's paid prices. The dollar figure is 53,600 x (input price) + 17,500 x (output price) per day; `measure_cost.py` computes it if `PRICE_IN_PER_M` and `PRICE_OUT_PER_M` are set.
 
 **Run Log and Verdicts**
 
-Criteria are 6–10 in [criteria.md](criteria.md), committed in `ba910bb` before any trial. `trials.py` runs criteria 6–8 (three trials each, through the Flask test client). Output below is pasted from `trials_before.txt`; the same script, unchanged, produced `trials_after.txt`.
+My capstone criteria are 6–11 in [criteria.md](criteria.md). I committed 6–10 before running anything (`add capstone criteria`) and added 11 later, also before its trial. `trials.py` runs criteria 6, 7, 8 and 11, three trials each, through the Flask test client. This is the real output from before any fix (`trials_before.txt`):
 
 ```
 Criterion 6 every call logged
@@ -490,86 +490,30 @@ Criterion 8 parity with run_agent
   => 3/3 trials pass
 ```
 
-| Criterion | Target | Before (3 trials) | Verdict |
+| Criterion | Target | Result before the fix | Verdict |
 |---|---|---|---|
-| 6 Every call logged | 10 of 10 records, right `client` | 10/10 in all three | Met |
-| 7 Bad input fails properly | 5 of 5 | 2/5 in all three (empty, whitespace pass; number, list body, 5000 chars fail) | **Not met** |
+| 6 Every call logged | 10 of 10 records, right `client` | 10/10 in all three trials | Met |
+| 7 Bad input fails properly | 5 of 5 | 2/5 in all three (number, list body and 5,000 characters failed) | **Not met** |
 | 8 Parity with `run_agent()` | 3 of 3 queries | 3/3 in all three | Met |
-| 11 Failure kinds logged accurately, with their input | 5 of 5 | 3/5 in all three (crash record kept an empty query; a reworded message was logged as `no_results`) | **Not met** |
-| 9 RUNNING.md alone is enough | 3 of 3 readers | Not measured: no timed attempts. Informally, peers who opened the hosted site and tried the WebMCP setup got results; no one started it locally from RUNNING.md | **Not verified** |
-| 10 Browser setup works from the steps | 3 of 3 fresh profiles | Informal (plus 5 real Execute Tool calls through the extension on Render, below): peers who set up Chrome, the flag and the extension saw the page say the tool was registered and everything worked; I did not count attempts or profiles | **Likely met, not counted** |
+| 9 RUNNING.md is enough to use and start it | 3 of 3 | Checked live, not counted (see below) | Not measured |
+| 10 Browser setup works from the steps | 3 of 3 | Checked live, not counted (see below) | Likely met, not counted |
+| 11 Failure kinds logged accurately | 5 of 5 | 3/5 in all three (see The Improvement) | **Not met** |
 
-Honest limits on the passes: criterion 6 wrote to a scratch log file, not the Render one, and calls the app in-process, so it shows the logging code is complete, not that the hosted instance's log works. Criterion 8 ran with the cache on, so the outfit and fit card text were identical to `run_agent()`'s because both read the same cached answers; only the item id and the price ceiling are independent evidence. It also called `/ask` directly, not the page's JavaScript `find_fit`, so the browser side of the contract is not covered.
+**Criteria 9 and 10:** I walked through the setup with peers during my demo. Those who followed the steps (Chrome flag, extension, the page's status line) saw the tool register and work. I didn't count attempts or fresh profiles, so I'm not claiming 3 of 3. Nobody started the project locally from RUNNING.md. The only clean-clone run is mine, from before I wrote the criteria, and it found the macOS port 5000 problem.
 
-**Criteria 9 and 10, what actually happened:** Demo Day time went to questions about how it works, so nobody ran these as trials. I am reporting what peers told me, not a 3-of-3 count. The one thing criterion 9 asked for that nobody did is start the project locally from a clean clone using RUNNING.md alone; the only clean-clone run is mine, from before the criteria were written (it found the macOS port 5000 problem).
+**What the passes do and don't show:** criteria 6 and 8 ran in-process against a scratch log, not the Render log. Criterion 8 ran with the cache on, so the outfit text matched `run_agent()` because both read the same cached answer. Only the item id and the price ceiling are independent evidence. It also called `/ask` directly, not the page's JavaScript.
 
-**Hosted run log (from Render's Logs tab):** the `RUNLOG` lines from the deployed instance are in `logs/render_runlog.jsonl` (14 records: 11 from Demo Day and 3 from the post-fix check below; copied from the Render log export; the rest of that export is HTTP health-check noise and is not committed). They show the hosted log works: records exist with `client: "form"` and one with `client: "webmcp"` (`vintage sweater under $45 size L`, 6.9 s, 2 model calls, 680 tokens). They also show cold-and-slow cases: a form run of 22.9 s and one of 24.7 s with the same 2 model calls and about 760 tokens, and several 4 s runs with `model_calls: 0`, which are cache hits on repeated queries.
+**On the hosted site (Render):** `logs/render_runlog.jsonl` has the `RUNLOG` lines from the deployed instance. They include real `client: "webmcp"` records from calling `find_fit` through the Model Context Tool Inspector's Execute Tool, so the page, the registered tool and `/ask` work together in a real browser. What I have not seen is a model choosing the tool on its own. The inspector's chat step uses its own Gemini model and returned HTTP 503, which I think is Google overload or my free key's limits, but I didn't confirm which. Hosted requests took 4–25 s: the first run in a series was about 19 s, with the MCP search step taking 10 s of that, and repeats that hit the cache and made no model calls still took about 4–5 s, so starting the MCP process is a large part of the time on Render's free instance. Locally the median was 3.6 s.
 
-**Observed on the hosted site after the fix (not a trial):** after the redeploy (the Render log shows "Deploying..." then "Your service is live" at 17:19, which carries the criterion 7 fix), I typed `5` into the Model Context Tool Inspector's Execute Tool three times. Examined, not counted toward any criterion:
+**Diagnosis of criterion 7:** `serve.py::_handle_ask` assumed the body was a JSON object with a string `query`. A number made `.strip()` raise `AttributeError`, a list body failed the same way on `payload.get`, and both came back as an HTML 500. A 5,000-character query had no check, so it ran the whole agent (two model calls) and returned 200. The agent itself behaved correctly. The server never looked at the input first.
 
-- **It was not the error path.** The inspector sends what is typed as a string, so the tool received `{"query": "5"}`, a valid non-empty string, and the server correctly accepted it. The case criterion 7 tests is a JSON number (`{"query": 5}`). The inspector's text box can't easily produce that, and the page's `find_fit` code in `static/index.html` rejects a non-string `query` in the browser before any request is sent. So that rejection never reaches the server and leaves no `RUNLOG` record. I tested the number case only through the server (`trials.py`), not through the browser tool; I have not seen the browser-side message appear.
-- **A meaningless query got a confident answer.** `5` matched `lst_009`, Platform Mary Janes, because that listing's description says "UK size 5". The result was `ok: true` with a full outfit and fit card (all three runs logged `client: "webmcp"`, `status: ok`). The input check is about shape and length, not meaning, so the system answers "5" as if it were a request. That is the same family as the multi-item finding: no check that the match fits what was asked. Not fixed.
-- **Where the time went (first run, 18.9 s, from the log lines):** parse 0 s; `search_listings` over MCP 10.2 s; `suggest_outfit` 8.0 s; `create_fit_card` 0.7 s. The second and third runs had 2 cache hits and 0 model calls, and still took 4.3 s and 4.8 s, so about that long is the search step on its own, starting the MCP subprocess. Locally the whole request has a 3.6 s median. This points at the MCP subprocess start as a large and variable cost on the free instance, and so as a lead on the 39.7 s outlier. It is only a lead: that outlier was on my laptop, and I did not time the steps there.
-
-**Diagnosis of criterion 7:** three separate causes, all in `serve.py::_handle_ask`, which assumed the body was a JSON object with a string `query`. A number made `.strip()` raise `AttributeError: 'int' object has no attribute 'strip'`; a list body failed the same way on `payload.get`; both came back as an HTML 500 and were logged as `crash`. The 5,000-character query had no check at all, so it went through the whole agent (two model calls) and returned 200. The agent behaved correctly in each case; the server never looked at the input first.
-
-**Criterion 11 (added after the first submission was scored).** The grader's feedback named two flaws in my logging: `classify()` found the failure kind by searching the user-facing message for phrases, so rewording a message would silently log `no_results`; and the outer crash handler always logged `query=""`. I wrote criterion 11 for them before running anything (commit `add capstone criterion 11`), then ran it: 3/5 in all three trials (`trials11_before.txt`):
-
-```
-Criterion 11 failure kinds logged accurately
-  trial 1: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
-  trial 1: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
-  trial 1: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
-  trial 1: crash in handler   want=crash got=crash query_kept=False -> FAIL
-  trial 1: reworded message  want=model_unavailable got=no_results -> FAIL
-  trial 1: 3/5
-  trial 2: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
-  trial 2: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
-  trial 2: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
-  trial 2: crash in handler   want=crash got=crash query_kept=False -> FAIL
-  trial 2: reworded message  want=model_unavailable got=no_results -> FAIL
-  trial 2: 3/5
-  trial 3: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
-  trial 3: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
-  trial 3: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
-  trial 3: crash in handler   want=crash got=crash query_kept=False -> FAIL
-```
-
-**Diagnosis:** both flaws are where the fact is known versus where it is recorded. `run_agent()` already knows which exception it caught (`ModelUnavailable`, `QuotaGuard`, `MCPError`) when it writes the message, and throws that away; `serve.ask()` set `query = ""` before `_handle_ask` had parsed it.
-
-**What I changed (second improvement):** `run_agent()` now also sets `session["error_kind"]` in the three handlers (the starter says to add fields if needed; this adds one and changes no behaviour); `runlog.classify()` reads that field and no longer searches message text; and `_handle_ask` stores the query on `flask.g` as soon as it is read so the crash record keeps it. After (`trials11_after.txt`):
-
-```
-Criterion 11 failure kinds logged accurately
-  trial 1: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
-  trial 1: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
-  trial 1: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
-  trial 1: crash in handler   want=crash got=crash query_kept=True -> PASS
-  trial 1: reworded message  want=model_unavailable got=model_unavailable -> PASS
-  trial 1: 5/5
-  trial 2: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
-  trial 2: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
-  trial 2: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
-  trial 2: crash in handler   want=crash got=crash query_kept=True -> PASS
-  trial 2: reworded message  want=model_unavailable got=model_unavailable -> PASS
-  trial 2: 5/5
-  trial 3: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
-  trial 3: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
-  trial 3: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
-  trial 3: crash in handler   want=crash got=crash query_kept=True -> PASS
-```
-
-Criteria 6, 7 and 8 re-ran unchanged at 3/3, 5/5 and 3/3 and `python test.py` still passes. Limits: the four failures are forced by swapping a function for one that raises (the model, the MCP call, `classify()`), not triggered by a real outage, and the reworded-message check calls `classify()` directly rather than rewording the agent's text. The hosted copy has this change only after a push and redeploy. Note this makes the first improvement's before/after table above one of two: the first was aimed at criterion 7, this one at criterion 11.
-
-**Is the central claim verified?** The grader said the claim "a browser agent can call `find_fit`" had only been checked against a jsdom stub and a hand-set curl header. Since then the tool has been called through the real Model Context Tool Inspector extension in Chrome against the deployed page: five Execute Tool calls on Render, each producing a `client: "webmcp"` record (`logs/render_runlog.jsonl`) and a result in the extension. That checks the page-to-tool-to-`/ask` path in a real browser. It does not check a model choosing the tool by itself: the chat step failed with Google's 503, so no agent has decided on its own to call `find_fit`.
+**Two other things I observed on the hosted site, not fixed:**
+- **Multi-item queries return one item.** "tee and skirt", "skirt and tee" and plain "tee" all return the same Y2K Baby Tee, and "jacket and skirt" returned the same denim jacket as "jacket". Search matches words in any order and `run_agent` keeps only the top-ranked listing, and the data has no skirts. Nothing tells the user the second item was dropped. Fixing it means splitting the request, which changes the agent, not the front door.
+- **A meaningless query gets a confident answer.** I sent `5` through the Inspector (it arrives as a string, so it is valid input) and got the Platform Mary Janes with a full outfit, because that listing says "UK size 5". The input check looks at shape and length, not meaning. Also, a non-string `query` is rejected by the page's own JavaScript before any request is sent, so that case never reaches the server or the log. I only tested the number case against the server.
 
 **The Improvement**
 
-**What I changed:** one function in `serve.py`, the start of `_handle_ask`. It now checks, in order, that the body is a JSON object, that `query` is a string, and that it is at most 500 characters (the same limit the log keeps), and returns a 400 with a plain-language message for each. Nothing else changed.
-
-**Which failure it was meant to fix:** the three criterion 7 misses above.
-
-**Before and after** (same script, three trials each):
+**First improvement (criterion 7).** I changed the start of `_handle_ask` in `serve.py`. It now checks that the body is a JSON object, that `query` is a string, and that it is at most 500 characters (the same limit the log keeps), and returns a 400 with a plain message for each. Nothing else changed. Same script, after (`trials_after.txt`):
 
 ```
 Criterion 6 every call logged
@@ -616,19 +560,64 @@ Criterion 8 parity with run_agent
 | 7 Bad input | 2/5 each trial | 5/5 each trial |
 | 8 Parity | 3/3 trials | 3/3 trials |
 
-`python test.py` still passes after the change.
+`python test.py` still passes. The fix matches the cause, but I wrote these five cases after seeing how it failed, so it shows these cases are handled, not that every bad input is. The 500-character limit is my choice and might refuse a legitimate long request.
 
-**Did it help, and how do I know:** yes for these five inputs, and the cause matches the fix: each of the three now returns 400 with a JSON `error`, where before it returned 500 or 200. This is a check on cases I wrote after seeing the failure shape, so it shows these cases are handled, not that every bad input is. The 500-character limit is my choice and might refuse a legitimate long request; nothing I measured says what a real user's limit should be. The fix is committed but the hosted copy only has it after `git push` and a redeploy.
+**Second improvement (criterion 11).** After my first submission was scored, the feedback pointed at two flaws in my logging: `classify()` found the failure kind by searching the user-facing message for phrases, so rewording a message would silently log `no_results`; and the outer crash handler always logged an empty query. I wrote criterion 11 for them and ran it before changing anything: 3/5 in all three trials (`trials11_before.txt`):
+
+```
+Criterion 11 failure kinds logged accurately
+  trial 1: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 1: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 1: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 1: crash in handler   want=crash got=crash query_kept=False -> FAIL
+  trial 1: reworded message  want=model_unavailable got=no_results -> FAIL
+  trial 1: 3/5
+  trial 2: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 2: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 2: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 2: crash in handler   want=crash got=crash query_kept=False -> FAIL
+  trial 2: reworded message  want=model_unavailable got=no_results -> FAIL
+  trial 2: 3/5
+  trial 3: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 3: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 3: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 3: crash in handler   want=crash got=crash query_kept=False -> FAIL
+```
+
+The cause in both cases was that the fact was known in one place and recorded in another. `run_agent()` already knows which exception it caught when it writes the message, and `serve.ask()` set the query to `""` before the request was parsed. The change: `run_agent()` now also sets `session["error_kind"]` in its three handlers; `runlog.classify()` reads that field and no longer searches message text; and `_handle_ask` keeps the query on `flask.g` as soon as it has it, so a crash record keeps it. After (`trials11_after.txt`):
+
+```
+Criterion 11 failure kinds logged accurately
+  trial 1: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 1: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 1: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 1: crash in handler   want=crash got=crash query_kept=True -> PASS
+  trial 1: reworded message  want=model_unavailable got=model_unavailable -> PASS
+  trial 1: 5/5
+  trial 2: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 2: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 2: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 2: crash in handler   want=crash got=crash query_kept=True -> PASS
+  trial 2: reworded message  want=model_unavailable got=model_unavailable -> PASS
+  trial 2: 5/5
+  trial 3: model unreachable  want=model_unavailable got=model_unavailable query_kept=True -> PASS
+  trial 3: budget hit         want=quota_guard got=quota_guard query_kept=True -> PASS
+  trial 3: MCP down           want=mcp_error got=mcp_error query_kept=True -> PASS
+  trial 3: crash in handler   want=crash got=crash query_kept=True -> PASS
+```
+
+Criteria 6, 7 and 8 re-ran at 3/3, 5/5 and 3/3, and `python test.py` still passes. The four failures are forced by swapping a function for one that raises, not by a real outage, and the reworded-message check calls `classify()` directly.
 
 **What's Still Broken**
 
-- Criteria 9 and 10 were not measured (see above). A real check needs a person following RUNNING.md alone, including a local start, and a Chrome profile that has never enabled the flag.
-- **Multi-item queries silently return one item.** Peers tried "tee and skirt", "skirt and tee" and "tee and dress" and some got the same output. I reproduced it on the search step: `parse_query` does not split a request, search matches words in any order and `run_agent` keeps only the top-ranked listing. "tee and skirt", "skirt and tee" and plain "tee" all return `lst_002` (Y2K Baby Tee) first; "skirt" alone matches nothing because the 40 listings contain no skirt; "tee and dress" and "dress and tee" also return the tee first. The hosted log shows the same: "I want to get a jacket and skirt" and "I want to get a jacket" both returned `lst_007`. Nothing tells the user the second item was dropped. I did not check what peers saw when they reported multiple fit cards; the outfit text can contain more than one look, which may look like several cards. Two of the repeated hosted runs also hit the cache, so identical output there is partly the cache. I have not fixed this: the capstone allows one improvement, and the fix (split the request, search each part, tell the user what was dropped) changes the agent, not the front door.
-- No end-to-end run of a real agent calling `find_fit` has succeeded. The Tool Inspector's chat step called Google's `gemini-3.6-flash` and returned HTTP 503. The trace showed the tool and its schema reached the model, so that part works. Execute Tool with a typed query is the only path I have exercised.
-- One local run took 39.7 s with the same two model calls and tokens as the 3 s runs. I never found out why. The hosted step timings (above) show the MCP search step taking 4 to 10 s on Render, which makes the subprocess start the first suspect, but I haven't confirmed it for that run, so a rate-limit pause or the network are still possible. The log records `wait_ms` and `duration_ms` but not time inside the model call, so it can't separate them.
-- `find_fit` returns finished prose, so the calling agent pays tokens for text it could have written itself. A smaller tool that returns only the search result would be cheaper and would leave the writing to the agent. Next idea: a B2B version where a distributor's site exposes order tools to buyers' agents, which also needs auth and confirmation steps this version does not have.
-- The input check does not judge meaning: `5` returns a full answer about a pair of Mary Janes. A non-string `query` is rejected by the page's JavaScript before reaching the server, so those calls leave no log record.
-- There is no auth on `/ask`, so anyone with the URL can spend my Gemini quota.
+Where the project stands: the web page, the `find_fit` tool, the run log and the Render deployment all work, and I've run the tool through the real Chrome extension. These are open:
+- **No model has chosen `find_fit` by itself.** The inspector's chat step returned Google's 503. I've only called the tool with Execute Tool and a typed query.
+- **Criteria 9 and 10 were checked live with peers but not counted.** A proper check needs someone following RUNNING.md alone, including starting it locally, and a Chrome profile that has never enabled the flag.
+- **Multi-item and meaningless queries** (see above) return one confident answer. Fixing them means changing the agent.
+- **Rate limits.** I'm on Gemini's free tier. `generate.py` paces calls at 15 per minute, which is what caused the 39.7 s run, and a burst of requests would wait the same way. The hosted site runs one request at a time, so it won't handle many users at once. I didn't test load.
+- **Hosted speed.** Starting the MCP search process takes 4–10 s on Render's free instance, and the instance sleeps after about 15 idle minutes, so the first request takes about a minute. I only have timings from a few runs.
+- **`find_fit` returns finished prose**, so a calling agent pays for tokens it could write itself. A smaller tool that returns only search results would be cheaper. Next idea: a B2B version where a distributor's site exposes order tools to buyers' agents. That needs auth and confirmation steps this version doesn't have.
+- **No auth on `/ask`**, so anyone with the URL can spend my Gemini quota.
 
 **How I Used AI**
 

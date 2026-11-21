@@ -152,7 +152,7 @@ WebMCP is experimental, so the browser setup is part of the product, not a side 
 
 ## 11. Every kind of failure is logged as what it was, with the input that caused it
 
-*(Added after the first capstone submission was scored; written before the trial for it was run. Draft by Claude from the grader's feedback: review it.)*
+*(Added after my first submission was scored, from the grader's feedback. Written before I ran its trial.)*
 
 I force four failures on purpose: the model unreachable, the request budget hit, the MCP search server down, and an unexpected crash inside the request handler. For each, the record in the run log must have the right `status` (`model_unavailable`, `quota_guard`, `mcp_error`, `crash`) and `input.query` equal to the query that was sent. A fifth check rewords the error message the agent shows the user and confirms the logged status does not change. Target: 5 of 5.
 

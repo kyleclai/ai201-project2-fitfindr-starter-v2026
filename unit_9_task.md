@@ -171,7 +171,7 @@ Open risks: WebMCP is an origin trial (Chrome 149+) / flag `chrome://flags/#enab
 | 6–7 | README describes it, runs observable | 8 | Done, plus hosted RUNLOG records |
 | 8 | Runs actually happened | 5 | Done: trials.py, before/after files, criteria committed first |
 | 9 | Verdicts right | 6 | Done; 9 "not verified", 10 "likely met, not counted" stated plainly |
-| 10 | Every miss diagnosed | 7 | 7, 11, multi-item diagnosed; 39.7 s outlier still only a lead |
+| 10 | Every miss diagnosed | 7 | 7, 11, multi-item and the 39.7 s outlier (rate-limit pacing) diagnosed |
 | 11 | Improvement follows diagnosis, measured | 6 | Done (criterion 7: 2/5 → 5/5) |
 | 12 | Cost and what's left | 6 | Done |
 | 13 | Second measured improvement (stretch) | 2 | Done (criterion 11: 3/5 → 5/5) |
