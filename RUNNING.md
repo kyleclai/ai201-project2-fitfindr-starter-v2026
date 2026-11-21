@@ -3,19 +3,51 @@
 **Start here.** Everything after the first horizontal rule is the starter's
 original guide.
 
-**Path:** B (local, with logs) is documented and tested. Path A (Render) is
-configured in `render.yaml` but not deployed yet; see "Hosted" at the end of this section.
+**Paths:** A (hosted on Render): https://fitfindr-1vae.onrender.com. B (local,
+with logs) is documented and tested below, for when the hosted copy is down.
+The first hosted request after a quiet spell takes about a minute while it wakes.
+
+## What is WebMCP? (the short version)
+
+A normal website is built for a person: you read it and click. WebMCP lets the
+page also hand an AI agent a **menu of actions** it can call directly. This page
+offers one action, `find_fit`, that takes a plain-language request and returns a
+listing, an outfit and a fit card. An agent calls it instead of guessing which
+box to type into.
+
+What you will actually see:
+- **Form:** you type, the page shows the result. Works in any browser.
+- **Agent call:** an agent (or you, through the Tool Inspector) runs `find_fit`
+  with `{"query": "..."}`. The same result appears on the page, and the log line
+  says `client: "webmcp"` instead of `"form"`.
+
+It is experimental and Chrome-only for now, so it needs the setup below. Without
+it the page is just the form, and nothing is broken.
+
+## Try the WebMCP tool in Chrome
+
+1. Use Chrome 149 or newer.
+2. Open `chrome://flags/#enable-webmcp-testing`, set it to **Enabled**, relaunch Chrome.
+3. Install the **Model Context Tool Inspector** extension from the Chrome Web Store.
+4. Open the page (hosted URL or `http://localhost:5000`). The bottom line should read
+   **"WebMCP: tool find_fit registered"**. If it says "not available", recheck steps 1-2.
+5. Open the extension, find `find_fit` in the tool list, enter
+   `{"query": "vintage graphic tee under $30"}` and press **Execute Tool**.
+   The result appears on the page and in the extension.
+
+The extension's chat box needs a Gemini API key and calls Google's own model.
+If it shows a 503, that is Google being overloaded, not FitFindr. Use Execute Tool.
 
 ## What you need
 
-| Thing | Value |
-|---|---|
-| Python | 3.11, 3.12 or 3.13 (not 3.14). Tested on 3.12.7, macOS |
-| Dependencies | pinned in `requirements.txt` (`flask`, `gunicorn`, `mcp`, `google-genai`, `python-dotenv`, `certifi`) |
-| Model files | none. The model is Gemini over the API, so no local weights, no GPU, well under 512 MB of RAM |
-| Secret | a `GEMINI_API_KEY` in `.env` (copy `.env.example`) |
-| Browser | any browser for the form. To see the WebMCP tool: Chrome 149+ with `chrome://flags/#enable-webmcp-testing` set to Enabled, then relaunch |
-
+| Thing        | Value                                                                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Python       | 3.11, 3.12 or 3.13 (not 3.14). Tested on 3.12.7, macOS                                                                                   |
+| Dependencies | pinned in `requirements.txt` (`flask`, `gunicorn`, `mcp`, `google-genai`, `python-dotenv`, `certifi`)                                    |
+| Model files  | none. The model is Gemini over the API, so no local weights, no GPU, well under 512 MB of RAM                                            |
+| Secret       | a `GEMINI_API_KEY` in `.env` (copy `.env.example`)                                                                                       |
+| Browser      | any browser for the form. To see the WebMCP tool: Chrome 149+ with `chrome://flags/#enable-webmcp-testing` set to Enabled, then relaunch |
+![[Pasted image 20261121083429.png]]
 ## Start it (clean checkout)
 
 ```bash
@@ -59,10 +91,11 @@ Every request appends one JSON line to `logs/runs.jsonl`. Read it back with
 python measure_cost.py      # 10 real runs, cache off, + 3 failure probes
 ```
 
-## Hosted (Path A, not yet deployed)
+## Hosted (Path A)
 
-`render.yaml` is ready: new Blueprint on Render, connect the repo, set
-`GEMINI_API_KEY`. Start command: `gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180`.
+Live at https://fitfindr-1vae.onrender.com. To deploy your own copy: new Blueprint
+on Render, connect the repo, set `GEMINI_API_KEY` (`render.yaml` is ready). Each
+request prints a `RUNLOG {...}` line, visible in Render's Logs tab. Start command: `gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180`.
 Free tier sleeps after ~15 min idle (first request ~1 min) and has no persistent
 disk, so `logs/` is wiped on sleep; copy entries into the README the same session.
 

@@ -376,6 +376,8 @@ Full output: `results/scored_2026-11-15_1852_after.md`.
 
 FitFindr, my unit 3–4 agent: parse a query, search 40 listings (over MCP), write an outfit, write a fit card. New this unit: a one-page web front end served from `serve.py`, a single WebMCP tool (`find_fit`) registered on that page so a browser agent can call FitFindr, and structured logging around every `/ask` request.
 
+What WebMCP is, technically: a proposed browser API (Chrome origin trial from 149, or `chrome://flags/#enable-webmcp-testing`) that lets a page publish tools to an in-browser agent with `document.modelContext.registerTool({name, description, inputSchema, execute})`. The agent reads the name, description and JSON Schema, decides when to call it, and the page's own `execute` function runs in the page's JavaScript context with the user's session. The tool is therefore a contract the page offers (typed input, structured output) rather than something an agent works out by reading the DOM and clicking. It is different from server-side MCP, which `search_listings` already uses: that is a stdio process my agent spawns, while WebMCP lives in the browser tab and is only available while the page is open. Here `find_fit` registers when the page loads and `execute` posts to the same `/ask` endpoint the form uses, with an `X-Client: webmcp` header so the run log can tell an agent call from a person.
+
 **The Shape**
 
 Shape C, extend one capability. The capability is "a browser agent can call FitFindr as a tool." The page registers one WebMCP tool, `find_fit`, whose `execute` calls the existing `POST /ask` and returns the item, outfit and fit card (or the `session.error` message). The page also has a plain form that hits the same endpoint, so it works in any browser without WebMCP. Logging and the run path are required alongside, as for every shape.
@@ -387,7 +389,11 @@ Out of scope, decided before building:
 
 **Running It**
 
-Path B: local, started with `python serve.py`, with a committed run record in `logs/runs.jsonl`. Full steps, environment and the WebMCP browser flag are at the top of [RUNNING.md](RUNNING.md). I followed RUNNING.md from a fresh clone into a new folder. It failed the first time: on macOS port 5000 is held by AirPlay Receiver, so `python serve.py` exited with "Address already in use". RUNNING.md now gives `PORT=5001 python serve.py`. With that, the clone served the page, `/health` and a real `/ask` (I set the `X-Client: webmcp` header by hand with curl, so that record only shows the header is logged). Path A is configured (`render.yaml`: `gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180`) but I have not deployed it yet.
+Path B: local, started with `python serve.py`, with a committed run record in `logs/runs.jsonl`. Full steps, environment and the WebMCP browser flag are at the top of [RUNNING.md](RUNNING.md). I followed RUNNING.md from a fresh clone into a new folder. It failed the first time: on macOS port 5000 is held by AirPlay Receiver, so `python serve.py` exited with "Address already in use". RUNNING.md now gives `PORT=5001 python serve.py`. With that, the clone served the page, `/health` and a real `/ask` (I set the `X-Client: webmcp` header by hand with curl, so that record only shows the header is logged). Path A is deployed on Render at https://fitfindr-1vae.onrender.com (`render.yaml`: `gunicorn serve:app --bind 0.0.0.0:$PORT --timeout 180`). The free tier sleeps after about 15 idle minutes, so the first request takes about a minute.
+
+**Architecture**
+
+![[Pasted image 20261121083759.png]]
 
 **Instrumentation**
 
